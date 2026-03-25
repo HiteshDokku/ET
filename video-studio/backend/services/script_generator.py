@@ -1,18 +1,17 @@
-import os
-from openai import OpenAI
+from utils.llm_client import get_llm_client_and_model
 
 def generate_script(summary: str) -> str:
     """
     Converts a summary into a 60-second news anchor script with short, engaging sentences.
     """
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client, model_name = get_llm_client_and_model()
     prompt = (
         f"Convert this bullet point summary into a 60-second news anchor script. "
         f"Keep sentences short, punchy, and engaging for a fast-paced video.\n\nSummary:\n{summary}"
     )
     
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=model_name,
         messages=[
             {"role": "system", "content": "You are an expert news scriptwriter."},
             {"role": "user", "content": prompt}

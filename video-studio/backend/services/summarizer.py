@@ -1,15 +1,14 @@
-import os
-from openai import OpenAI
+from utils.llm_client import get_llm_client_and_model
 
 def generate_summary(text: str) -> str:
     """
     Summarizes business news into 3-4 bullet points in simple language.
     """
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client, model_name = get_llm_client_and_model()
     prompt = f"Summarize this business news into 3-4 bullet points in simple language:\n\n{text}"
     
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=model_name,
         messages=[
             {"role": "system", "content": "You are a helpful assistant that summarizes news."},
             {"role": "user", "content": prompt}

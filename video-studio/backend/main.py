@@ -31,8 +31,8 @@ async def generate_video(request: VideoRequest):
         raise HTTPException(status_code=400, detail="Article text is required")
     
     try:
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key or api_key == "YOUR_API_KEY_HERE":
+        api_key = os.getenv("GROQ_API_KEY") or os.getenv("XAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+        if not api_key or 'YOUR_' in api_key:
             raise HTTPException(status_code=500, detail="API Key is missing or invalid.")
             
         from pipeline import generate_video_pipeline

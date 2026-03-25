@@ -1,13 +1,12 @@
-import os
 import json
-from openai import OpenAI
+from utils.llm_client import get_llm_client_and_model
 
 def generate_scenes(script: str) -> list[dict]:
     """
     Breaks a script into 4-6 scenes.
     Returns JSON array: [{"text": "...", "type": "text" | "data"}]
     """
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client, model_name = get_llm_client_and_model()
     prompt = (
         f"Break this script into 4-6 scenes. "
         f"For each scene return a JSON object with 'text' (the narration) and 'type' ('text' or 'data'). "
@@ -17,7 +16,7 @@ def generate_scenes(script: str) -> list[dict]:
     )
     
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=model_name,
         messages=[
             {"role": "system", "content": "You are a JSON generator that outputs strictly JSON without backticks or markdown."},
             {"role": "user", "content": prompt}
