@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+openai
+moviepy
+pillow
+matplotlib
+gtts
+python-multipart
+python-dotenv

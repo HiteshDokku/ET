@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI News Video Studio</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎥 AI News Video Studio</h1>
+            <p>Generate a structured news video from any business article automatically.</p>
+        </header>
+
+        <main>
+            <div class="input-section">
+                <textarea id="article-input" placeholder="Paste your business news article here..."></textarea>
+                <button id="generate-btn">Generate Video</button>
+            </div>
+
+            <div id="loader" class="hidden">
+                <div class="spinner"></div>
+                <p>Processing article and generating video... (This usually takes 30-60 seconds)</p>
+            </div>
+
+            <div id="error-message" class="hidden error"></div>
+
+            <div id="video-output" class="hidden">
+                <h2>Your Generated Video</h2>
+                <video id="result-video" controls width="100%">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </main>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
