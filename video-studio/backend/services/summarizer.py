@@ -5,15 +5,11 @@ def generate_summary(text: str) -> str:
     """
     Summarizes business news into 3-4 bullet points in simple language.
     """
-    api_key = os.getenv("GROQ_API_KEY") or os.getenv("XAI_API_KEY") or os.getenv("OPENAI_API_KEY")
-    client = OpenAI(
-        api_key=api_key,
-        base_url="https://api.groq.com/openai/v1"
-    )
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     prompt = f"Summarize this business news into 3-4 bullet points in simple language:\n\n{text}"
     
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are a helpful assistant that summarizes news."},
             {"role": "user", "content": prompt}

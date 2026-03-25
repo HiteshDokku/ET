@@ -7,11 +7,7 @@ def generate_scenes(script: str) -> list[dict]:
     Breaks a script into 4-6 scenes.
     Returns JSON array: [{"text": "...", "type": "text" | "data"}]
     """
-    api_key = os.getenv("GROQ_API_KEY") or os.getenv("XAI_API_KEY") or os.getenv("OPENAI_API_KEY")
-    client = OpenAI(
-        api_key=api_key,
-        base_url="https://api.groq.com/openai/v1"
-    )
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     prompt = (
         f"Break this script into 4-6 scenes. "
         f"For each scene return a JSON object with 'text' (the narration) and 'type' ('text' or 'data'). "
@@ -21,7 +17,7 @@ def generate_scenes(script: str) -> list[dict]:
     )
     
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are a JSON generator that outputs strictly JSON without backticks or markdown."},
             {"role": "user", "content": prompt}
