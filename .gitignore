@@ -18,6 +18,7 @@ env/
 video-studio/backend/assets/temp/
 story-arc-tracker/backend/__pycache__/
 story-arc-tracker/backend/services/__pycache__/
+!video-studio/media/
 *.mp4
 *.mp3
 *.png
