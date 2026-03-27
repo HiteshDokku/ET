@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Python environment files
+.env
+.env.*
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Logs
+*.log
+
+# FastAPI / uvicorn
+*.pid
+
+# Selenium webdriver cache
+webdriver/
+chromedriver.exe
+
+# Build / dist
+build/
+dist/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Coverage
+.coverage
+coverage.xml
+htmlcov/
+
+# Node (if frontend expands later)
+node_modules/
+
+# Temporary files
+*.tmp
+*.temp
+
+# API keys / secrets
+secrets.json
+
+# Python cache
+*.pyc
