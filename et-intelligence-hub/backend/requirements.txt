@@ -1,8 +1,9 @@
 fastapi
 uvicorn
-python-dotenv
 groq
-requests
+python-dotenv
+pydantic
+selenium
 beautifulsoup4
 webdriver-manager
-selenium
+requests

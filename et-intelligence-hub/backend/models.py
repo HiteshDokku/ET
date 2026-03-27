@@ -10,6 +10,8 @@ class ArticleInput(BaseModel):
     id: str
     title: str
     content: str
+    url: Optional[str] = None
+    date: Optional[str] = None
 
 
 class StoryRequest(BaseModel):
@@ -52,3 +54,4 @@ class StoryArcResponse(BaseModel):
     sentiment_overview: SentimentOverview
     contrarian_insights: ContrarianInsights
     what_to_watch: list[str] = []
+    articles: list[ArticleInput] = []
