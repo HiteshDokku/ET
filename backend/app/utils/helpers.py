@@ -51,8 +51,9 @@ def get_font_path(font_name: str) -> str:
     path = os.path.join(settings.font_dir, f"{font_name}.ttf")
     if os.path.exists(path):
         return path
-    # Fallback to system font
+    # Fallback to system font or media fonts explicitly
     for fallback in [
+        os.path.join("/app/media/fonts", f"{font_name}.ttf"),
         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     ]:

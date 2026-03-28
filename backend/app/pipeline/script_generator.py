@@ -30,7 +30,7 @@ RULES:
 10. Use active voice and present tense where possible"""
 
 
-def generate_script(topic: str, source_url: str = None, scraped_text: str = None, retry_context: str = None) -> Script:
+def generate_script(topic: str, source_url: str = None, scraped_text: str = None, retry_context: str = None, language_code: str = "en", language_name: str = "English") -> Script:
     """Generate a news video script using Gemini 2.5 Flash."""
 
     client = Groq(api_key=settings.groq_api_key)
@@ -47,6 +47,8 @@ def generate_script(topic: str, source_url: str = None, scraped_text: str = None
 
 {context_prompt}
 {"REVISION NOTES: " + retry_context if retry_context else ""}
+
+CRITICAL: You MUST write the entire script, the title, and all text fields exclusively in {language_name}.
 
 Return a JSON object with this EXACT structure. ALWAYS produce a _thought_chain string to reason through your logic before writing.
 {{
@@ -120,6 +122,8 @@ IMPORTANT:
     # Calculate actual word count and duration
     total_words = sum(count_words(seg.text) for seg in segments)
     est_duration = estimate_duration(total_words, 150)
+    if language_code != "en":
+        est_duration *= 1.15
 
     script = Script(
         topic=data.get("topic", topic),

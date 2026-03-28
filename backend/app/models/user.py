@@ -16,6 +16,7 @@ class User(Base):
     role = Column(String, default="student")
     interests = Column(JSON, default=list)
     level = Column(String, default="beginner")
+    preferred_language = Column(String, default="en")
     engagement = Column(JSON, default=dict)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

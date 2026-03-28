@@ -37,6 +37,20 @@ def build_prompt(article, profile):
     interests = ", ".join(profile.get("interests", []))
     if not interests:
         interests = "general business trends"
+        
+    lang_code = profile.get("preferred_language", "en")
+    
+    # Map code to name for better LLM adherence
+    lang_map = {
+        'en': 'English', 'hi': 'Hindi', 'bn': 'Bengali', 'te': 'Telugu',
+        'mr': 'Marathi', 'ta': 'Tamil', 'gu': 'Gujarati', 'ur': 'Urdu',
+        'kn': 'Kannada', 'ml': 'Malayalam', 'pa': 'Punjabi'
+    }
+    lang_name = lang_map.get(lang_code, "English")
+
+    translation_instruction = ""
+    if lang_code != "en":
+        translation_instruction = f"7. ENTIRE OUTPUT MUST BE EXCLUSIVELY WRITTEN AND TRANSLATED IN {lang_name}."
 
     return f"""
 You are an AI-powered personalized news assistant.
@@ -57,6 +71,7 @@ CRITICAL INSTRUCTIONS:
 4. NEVER use generic phrases: "this is useful", "this is important", "this helps understand", "this is significant"
 5. ALWAYS ground explanations in how it directly affects their {interests}
 6. Generate responses that are specific to {interests}, not vague or broadly applicable
+{translation_instruction}
 
 OUTPUT STRICTLY IN JSON:
 

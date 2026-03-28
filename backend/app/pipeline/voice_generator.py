@@ -18,6 +18,20 @@ logger = logging.getLogger(__name__)
 # Cache for discovered voice ID
 _cached_voice_id: str | None = None
 
+EDGE_TTS_VOICES = {
+    'en': 'en-US-ChristopherNeural',
+    'hi': 'hi-IN-MadhurNeural',
+    'bn': 'bn-IN-BashkarNeural',
+    'te': 'te-IN-MohanNeural',
+    'mr': 'mr-IN-ManoharNeural',
+    'ta': 'ta-IN-PallaviNeural',
+    'gu': 'gu-IN-NiranjanNeural',
+    'ur': 'ur-IN-SalmanNeural',
+    'kn': 'kn-IN-GaganNeural',
+    'ml': 'ml-IN-MidhunNeural',
+    'pa': 'pa-IN-NavneetNeural'
+}
+
 
 def _get_available_voice_id(client: ElevenLabs) -> str:
     """Get a voice ID that works with the user's plan.
@@ -66,7 +80,7 @@ def _get_available_voice_id(client: ElevenLabs) -> str:
 
 
 def generate_voice(script: Script, job_id: str,
-                   voice_id: str = None) -> VoiceResult:
+                   voice_id: str = None, language_code: str = "en") -> VoiceResult:
     """Generate TTS audio for each script segment using ElevenLabs."""
     work_dir = job_dir(job_id)
     audio_dir = os.path.join(work_dir, "audio")
@@ -104,9 +118,10 @@ def generate_voice(script: Script, job_id: str,
             try:
                 import subprocess
                 clean_text = seg.text.replace("*", "").replace('"', '').replace('\n', ' ')
+                fallback_voice = EDGE_TTS_VOICES.get(language_code, 'en-US-ChristopherNeural')
                 cmd = [
                     "edge-tts",
-                    "--voice", "en-US-ChristopherNeural",
+                    "--voice", fallback_voice,
                     "--text", clean_text,
                     "--write-media", seg_path
                 ]

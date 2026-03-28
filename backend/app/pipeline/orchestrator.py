@@ -31,12 +31,16 @@ class PipelineOrchestrator:
         source_url: Optional[str] = None,
         voice_id: Optional[str] = None,
         progress_callback: Optional[ProgressCallback] = None,
+        language_code: str = "en",
+        language_name: str = "English",
     ):
         self.job_id = job_id
         self.topic = topic
         self.source_url = source_url
         self.voice_id = voice_id
         self.progress_callback = progress_callback or (lambda *_: None)
+        self.language_code = language_code
+        self.language_name = language_name
 
         self.script: Optional[Script] = None
         self.visual_plan: Optional[VisualPlan] = None
@@ -77,7 +81,8 @@ class PipelineOrchestrator:
 
                     scraped_text = self.scraped_content.text if self.scraped_content else None
                     self.script = generate_script(
-                        self.topic, self.source_url, scraped_text, retry_ctx
+                        self.topic, self.source_url, scraped_text, retry_ctx,
+                        self.language_code, self.language_name
                     )
                     logger.info(f"Script generated: {self.script.total_word_count} words")
 
@@ -134,7 +139,7 @@ class PipelineOrchestrator:
                         "Generating narration with ElevenLabs...", iteration
                     )
                     self.voice_result = generate_voice(
-                        self.script, self.job_id, self.voice_id
+                        self.script, self.job_id, self.voice_id, self.language_code
                     )
                     logger.info(f"Voice: {self.voice_result.total_duration:.1f}s")
 
@@ -146,6 +151,7 @@ class PipelineOrchestrator:
                 video_path = compose_video(
                     self.script, self.visual_plan, self.voice_result,
                     self.scene_images, self.chart_images, self.job_id,
+                    self.language_code
                 )
                 logger.info(f"Video composed: {video_path}")
 

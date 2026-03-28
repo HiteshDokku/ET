@@ -8,6 +8,20 @@ import ProfileSetup from '../components/ProfileSetup'
 
 const API = '/api'
 
+const LANGUAGE_MAP = {
+  'en': 'English',
+  'hi': 'Hindi',
+  'bn': 'Bengali',
+  'te': 'Telugu',
+  'mr': 'Marathi',
+  'ta': 'Tamil',
+  'gu': 'Gujarati',
+  'ur': 'Urdu',
+  'kn': 'Kannada',
+  'ml': 'Malayalam',
+  'pa': 'Punjabi'
+}
+
 export default function DashboardPage() {
   const clerkAvailable = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
   let user = null, isSignedIn = false, isLoaded = true
@@ -93,10 +107,19 @@ export default function DashboardPage() {
   const handleVideoGenerate = async (topic, sourceUrl) => {
     try {
       const headers = await getAuthHeaders()
+      
+      const langCode = profile?.preferred_language || 'en'
+      const langName = LANGUAGE_MAP[langCode] || 'English'
+
       const res = await fetch(`${API}/video/generate`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ topic, source_url: sourceUrl }),
+        body: JSON.stringify({ 
+          topic, 
+          source_url: sourceUrl,
+          language_code: langCode,
+          language_name: langName
+        }),
       })
       const data = await res.json()
       setVideoJob(data)

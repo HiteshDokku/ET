@@ -15,8 +15,23 @@ const INTEREST_SUGGESTIONS = [
   'Government Policy', 'Climate & ESG', 'Healthcare',
 ]
 
+const LANGUAGES = [
+  { code: 'en', name: 'English' },
+  { code: 'hi', name: 'Hindi' },
+  { code: 'bn', name: 'Bengali' },
+  { code: 'te', name: 'Telugu' },
+  { code: 'mr', name: 'Marathi' },
+  { code: 'ta', name: 'Tamil' },
+  { code: 'gu', name: 'Gujarati' },
+  { code: 'ur', name: 'Urdu' },
+  { code: 'kn', name: 'Kannada' },
+  { code: 'ml', name: 'Malayalam' },
+  { code: 'pa', name: 'Punjabi' }
+]
+
 export default function ProfileSetup({ onComplete }) {
   const [role, setRole] = useState('student')
+  const [language, setLanguage] = useState('en')
   const [interests, setInterests] = useState([])
   const [level, setLevel] = useState('beginner')
   const [saving, setSaving] = useState(false)
@@ -32,7 +47,7 @@ export default function ProfileSetup({ onComplete }) {
   const handleSave = async () => {
     if (interests.length === 0) return
     setSaving(true)
-    await onComplete({ role, interests, level })
+    await onComplete({ role, interests, level, preferred_language: language })
     setSaving(false)
   }
 
@@ -42,6 +57,20 @@ export default function ProfileSetup({ onComplete }) {
         <div className="profile-setup__title">Welcome to ET</div>
         <div className="profile-setup__sub">
           Tell us about yourself to personalize your newsroom
+        </div>
+
+        {/* Language Selection */}
+        <div className="form-group">
+          <label className="form-label">Preferred Language</label>
+          <select
+            className="form-select"
+            value={language}
+            onChange={e => setLanguage(e.target.value)}
+          >
+            {LANGUAGES.map(l => (
+              <option key={l.code} value={l.code}>{l.name}</option>
+            ))}
+          </select>
         </div>
 
         {/* Role Selection */}

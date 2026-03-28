@@ -66,6 +66,7 @@ def compose_video(
     scene_images: dict[int, str],
     chart_images: dict[int, str],
     job_id: str,
+    language_code: str = "en",
 ) -> str:
     work_dir = job_dir(job_id)
     output_dir = job_output_dir(job_id)
@@ -105,7 +106,7 @@ def compose_video(
             seg_text = " ".join(seg_texts)
 
         ui_path = os.path.join(scenes_dir, f"ui_{scene.scene_id}.png")
-        _composite_ui_image(scene, seg_text, script.title, ui_path)
+        _composite_ui_image(scene, seg_text, script.title, ui_path, language_code)
         
         scene_files.append((img_path, ui_path, duration, scene.motion_type))
 
@@ -119,7 +120,7 @@ def compose_video(
     return output_path
 
 
-def _composite_ui_image(scene: SceneVisual, script_text: str, title: str, output_path: str):
+def _composite_ui_image(scene: SceneVisual, script_text: str, title: str, output_path: str, language_code: str = "en"):
     """Draw the ET graphical interface with a transparent hole for media."""
     ticker_data = _get_live_ticker_data()
     script_text = script_text.replace("*", "").replace("**", "")
@@ -151,15 +152,38 @@ def _composite_ui_image(scene: SceneVisual, script_text: str, title: str, output
     white = (255, 255, 255, 255)
 
     # Fonts
+    FONT_MAP = {
+        'hi': 'NotoSansDevanagari-Bold',
+        'mr': 'NotoSansDevanagari-Bold',
+        'bn': 'NotoSansBengali-Bold',
+        'te': 'NotoSansTelugu-Bold',
+        'ta': 'NotoSansTamil-Bold',
+        'gu': 'NotoSansGujarati-Bold',
+        'kn': 'NotoSansKannada-Bold',
+        'ml': 'NotoSansMalayalam-Bold',
+        'pa': 'NotoSansGurmukhi-Bold',
+        'ur': 'NotoNastaliqUrdu-Bold',
+    }
+
     try:
         font_logo_et = ImageFont.truetype(get_font_path(FONT_BOLD), 40)
         font_logo_text = ImageFont.truetype(get_font_path(FONT_SEMIBOLD), 38)
-        font_box_header = ImageFont.truetype(get_font_path(FONT_EXTRABOLD), 48)
-        font_headline = ImageFont.truetype(get_font_path(FONT_EXTRABOLD), 52)
-        font_bullet = ImageFont.truetype(get_font_path("Montserrat-Medium"), 32)
-        font_script = ImageFont.truetype(get_font_path("Montserrat-Regular"), 26)
-        font_ticker = ImageFont.truetype(get_font_path(FONT_SEMIBOLD), 32)
-    except Exception:
+        
+        target_font_bold = FONT_MAP.get(language_code)
+        if target_font_bold:
+            font_box_header = ImageFont.truetype(get_font_path(target_font_bold), 48)
+            font_headline = ImageFont.truetype(get_font_path(target_font_bold), 52)
+            font_bullet = ImageFont.truetype(get_font_path(target_font_bold), 32)
+            font_script = ImageFont.truetype(get_font_path(target_font_bold), 26)
+            font_ticker = ImageFont.truetype(get_font_path(target_font_bold), 32)
+        else:
+            font_box_header = ImageFont.truetype(get_font_path(FONT_EXTRABOLD), 48)
+            font_headline = ImageFont.truetype(get_font_path(FONT_EXTRABOLD), 52)
+            font_bullet = ImageFont.truetype(get_font_path("Montserrat-Medium"), 32)
+            font_script = ImageFont.truetype(get_font_path("Montserrat-Regular"), 26)
+            font_ticker = ImageFont.truetype(get_font_path(FONT_SEMIBOLD), 32)
+    except Exception as e:
+        logger.warning(f"Failed to load fonts: {e}")
         font_logo_et = ImageFont.load_default()
         font_logo_text = ImageFont.load_default()
         font_box_header = ImageFont.load_default()

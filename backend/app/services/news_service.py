@@ -79,14 +79,29 @@ def expand_interests(interests: List[str]) -> List[str]:
     Take user's interest list and expand each to related terms.
 
     Example:
-      ["AI", "startups"]
+      ["AI & Machine Learning", "Startups"]
       → ["AI", "artificial intelligence", "machine learning", "LLM", ...
          "startup", "funding", "venture capital", "unicorn", ...]
     """
+    FRONTEND_MAP = {
+        "ai & machine learning": "ai",
+        "stock markets": "markets",
+        "banking": "finance",
+        "global economy": "finance",
+        "indian economy": "finance",
+        "technology": "tech",
+        "government policy": "policy",
+        "climate & esg": "esg",
+        "electric vehicles": "ev",
+    }
+    
     expanded = list(interests)  # start with original interests
 
     for interest in interests:
         key = interest.lower()
+        if key in FRONTEND_MAP:
+            key = FRONTEND_MAP[key]
+            
         if key in INTEREST_EXPANSION:
             expanded.extend(INTEREST_EXPANSION[key])
         else:
@@ -253,8 +268,8 @@ def rank_articles_for_user(
     scored.sort(key=lambda x: x["relevance_score"], reverse=True)
 
     # ── Filter ────────────────────────────────────────────────────
-    STRONG_THRESHOLD   = 0.035
-    FALLBACK_THRESHOLD = 0.02
+    STRONG_THRESHOLD   = 0.015
+    FALLBACK_THRESHOLD = 0.005
 
     strong = [a for a in scored if a["relevance_score"] >= STRONG_THRESHOLD]
 
