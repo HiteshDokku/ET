@@ -16,6 +16,7 @@ services:
       - redis
       - postgres
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    mem_limit: 1g  
 
   # ── Celery worker (runs background jobs) ────────────────────
   celery_worker:
@@ -29,6 +30,7 @@ services:
       - redis
       - postgres
     command: celery -A app.celery_app.celery_config worker --loglevel=info
+    mem_limit: 1g  
 
   # ── Celery Beat (scheduler — runs jobs every N minutes) ─────
   celery_beat:
