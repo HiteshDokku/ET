@@ -1,0 +1,59 @@
+# Web framework
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+
+# Database (PostgreSQL)
+sqlalchemy==2.0.30
+asyncpg==0.29.0
+alembic==1.13.1
+
+# Redis
+redis==5.0.4
+
+# Celery
+celery==5.3.6
+celery[redis]==5.3.6
+
+# Environment
+python-dotenv==1.0.1
+
+# Data validation
+pydantic==2.7.1
+pydantic-settings==2.2.1
+
+# HTTP client
+httpx==0.27.0
+
+# RSS feeds
+feedparser==6.0.11
+
+# Date utilities
+python-dateutil==2.9.0
+
+# ML (news personalization)
+scikit-learn==1.4.2
+numpy==1.26.4
+
+# LLM (Groq — ALL AI tasks)
+groq
+
+# Video generation
+elevenlabs
+moviepy
+Pillow
+matplotlib
+pydub
+python-multipart
+aiofiles
+edge-tts
+yfinance
+
+# Scraping (intelligence hub)
+beautifulsoup4
+selenium
+webdriver-manager
+requests
+
+# Clerk JWT verification
+PyJWT
+cryptography

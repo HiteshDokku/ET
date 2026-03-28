@@ -1,0 +1,122 @@
+version: "3.9"
+
+services:
+
+  # ── Redis (cache + Celery broker) ───────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── PostgreSQL (user profiles + articles) ───────────────────
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: etuser
+      POSTGRES_PASSWORD: etpassword
+      POSTGRES_DB: et_newsroom
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U etuser -d et_newsroom"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Unified Backend API ─────────────────────────────────────
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://etuser:etpassword@postgres:5432/et_newsroom
+    volumes:
+      - output_data:/app/output
+      - tmp_data:/app/tmp
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # ── Celery Worker — Video Generation ────────────────────────
+  video-worker:
+    build: ./backend
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2 -Q video
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://etuser:etpassword@postgres:5432/et_newsroom
+    volumes:
+      - output_data:/app/output
+      - tmp_data:/app/tmp
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Celery Worker — News Fetching ───────────────────────────
+  news-worker:
+    build: ./backend
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=1 -Q news
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://etuser:etpassword@postgres:5432/et_newsroom
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Celery Beat — Scheduler ─────────────────────────────────
+  celery-beat:
+    build: ./backend
+    command: celery -A app.celery_app beat --loglevel=info
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Frontend (Vite + React) ─────────────────────────────────
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_CLERK_PUBLISHABLE_KEY=${CLERK_PUBLISHABLE_KEY}
+      - VITE_API_BASE=/api
+    depends_on:
+      - backend
+
+  # ── Nginx Reverse Proxy ─────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - output_data:/app/output
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  redis_data:
+  postgres_data:
+  output_data:
+  tmp_data:
