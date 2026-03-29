@@ -24,7 +24,7 @@ from app.services.redis_service import (
     get_cached_feed,
     cache_feed,
 )
-from app.services.news_service import llm_rank_articles
+from app.services.news_service import llm_rank_articles, enrich_articles_with_images
 from app.services.ai_service import rewrite_article_for_user
 from app.config import settings
 
@@ -71,8 +71,19 @@ async def build_personalized_feed(user_id: int, redis_client, language: str = "E
     # ── Step 2: Grace-period cache check ──────────────────────
     cached = get_cached_feed(user_id)
     if cached:
-        print(f"⚡ Grace cache hit — returning cached feed for user {user_id} "
-              f"(TTL: {redis_client.ttl(f'feed:{user_id}')}s remaining)")
+        # Check if cached feed is missing cover images (pre-upgrade data)
+        needs_images = any(not a.get("image_url") for a in cached)
+        if needs_images:
+            print(f"⚡ Cache hit but missing images — enriching {len(cached)} articles...")
+            try:
+                cached = await enrich_articles_with_images(cached)
+                cache_feed(user_id, cached, ttl_seconds=FEED_GRACE_TTL)
+                print(f"✅ Cache re-enriched with cover images")
+            except Exception as img_err:
+                print(f"⚠️  Image enrichment of cache failed (non-fatal): {img_err}")
+        else:
+            print(f"⚡ Grace cache hit — returning cached feed for user {user_id} "
+                  f"(TTL: {redis_client.ttl(f'feed:{user_id}')}s remaining)")
         return cached
 
     # ── Step 3: Run PersonalizedIntelAgent (with graceful degradation) ──
@@ -150,6 +161,13 @@ async def build_personalized_feed(user_id: int, redis_client, language: str = "E
             "published":            str(article.get("published", "")),
             "agent_curated":        True,
         })
+
+    # ── Step 7: Attach cover images (concurrent thread pool) ──
+    print("🖼️  Enriching articles with cover images...")
+    try:
+        feed = await enrich_articles_with_images(feed)
+    except Exception as img_err:
+        print(f"⚠️  Image enrichment failed (non-fatal): {img_err}")
 
     cache_feed(user_id, feed, ttl_seconds=FEED_GRACE_TTL)
     print(f"✅ Feed cached for user {user_id} (grace TTL: {FEED_GRACE_TTL}s)\n")

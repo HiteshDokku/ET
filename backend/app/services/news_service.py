@@ -13,6 +13,8 @@ and reason_for_selection explanations — all driven by AI reasoning.
 import feedparser
 import json
 import logging
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from dateutil import parser as dateparser
 from typing import List, Dict
@@ -20,6 +22,101 @@ from typing import List, Dict
 from app.intel.llm_client import ask_llm_fast
 
 logger = logging.getLogger(__name__)
+
+# ── Thread pool for I/O-bound image fetching (shared across calls) ──
+_image_executor = ThreadPoolExecutor(max_workers=5)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  IMAGE ENRICHMENT — runs in background tasks, NOT in API routes
+# ═══════════════════════════════════════════════════════════════
+
+# Domains / patterns that indicate branding junk, not real article images
+_IMAGE_BLOCKLIST = [
+    "google.com", "gstatic.com", "googleapis.com",
+    "googleusercontent.com", "ggpht.com", "news.google",
+    "favicon", "logo", "icon", "badge", "avatar",
+    "1x1", "pixel", "tracking", "analytics",
+    "spinner", "loader", "placeholder",
+    "gravatar.com", "wp-content/plugins",
+]
+
+
+def _is_quality_image_url(img_url: str) -> bool:
+    """Return True only if the URL looks like a real article hero image."""
+    lower = img_url.lower()
+    return not any(bad in lower for bad in _IMAGE_BLOCKLIST)
+
+
+def _get_article_image_sync(article: dict) -> str:
+    """Synchronous helper: resolve cover image for a single article.
+
+    Pipeline:
+      1. Scrape the article URL for an OG/hero image (filter out junk)
+      2. Fallback to Pexels search using title or category
+      3. Absolute fallback to a generic news placeholder
+    """
+    from app.pipeline.content_scraper import scrape_article
+    from app.pipeline.image_sourcer import get_pexels_image_url, DEFAULT_ARTICLE_IMAGE
+
+    url = article.get("url", "")
+    title = article.get("title", "")
+    category = article.get("category", "news")
+
+    # ── Step A: Try scraping the article page ─────────────────
+    try:
+        scraped = scrape_article(url)
+        if scraped and scraped.image_urls:
+            # Filter out Google News logos, favicons, tracking pixels
+            good_images = [u for u in scraped.image_urls if _is_quality_image_url(u)]
+            if good_images:
+                logger.info(f"Image scraped for: {title[:50]}")
+                return good_images[0]
+            else:
+                logger.info(f"Scraped images were all junk for: {title[:50]}")
+    except Exception as e:
+        logger.warning(f"Scrape failed for image ({title[:40]}): {e}")
+
+    # ── Step B: Pexels fallback ───────────────────────────────
+    try:
+        query = title if title else category
+        pexels_url = get_pexels_image_url(query)
+        if pexels_url:
+            logger.info(f"Pexels image for: {title[:50]}")
+            return pexels_url
+    except Exception as e:
+        logger.warning(f"Pexels fallback failed ({title[:40]}): {e}")
+
+    # ── Step C: Generic failsafe placeholder ──────────────────
+    logger.info(f"Using default placeholder for: {title[:50]}")
+    return DEFAULT_ARTICLE_IMAGE
+
+
+async def enrich_articles_with_images(articles: List[Dict]) -> List[Dict]:
+    """Attach an `image_url` to every article dict.
+
+    Runs scraping + Pexels lookups concurrently in a thread pool so
+    the Celery worker stays responsive. Each article is wrapped in
+    its own try/except — one bad URL won't crash the batch.
+    """
+    if not articles:
+        return articles
+
+    loop = asyncio.get_event_loop()
+
+    async def _resolve(art):
+        try:
+            img = await loop.run_in_executor(_image_executor, _get_article_image_sync, art)
+            art["image_url"] = img
+        except Exception as e:
+            from app.pipeline.image_sourcer import DEFAULT_ARTICLE_IMAGE
+            logger.warning(f"Image enrichment failed for '{art.get('title', '?')[:40]}': {e}")
+            art["image_url"] = DEFAULT_ARTICLE_IMAGE
+        return art
+
+    enriched = await asyncio.gather(*[_resolve(a) for a in articles])
+    logger.info(f"✅ Enriched {len(enriched)} articles with cover images")
+    return list(enriched)
 
 # Google News RSS base URL
 GOOGLE_RSS_BASE = "https://news.google.com/rss/search?hl=en-IN&gl=IN&ceid=IN:en&q="

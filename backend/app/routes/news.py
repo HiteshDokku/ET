@@ -124,6 +124,7 @@ async def _db_fallback(db: AsyncSession, user) -> list[dict]:
                 "ai_generated": False,
                 "published": str(row.published or row.fetched_at or ""),
                 "agent_curated": False,
+                "image_url": None,
             })
 
         logger.info(f"📦 DB fallback returned {len(feed)} articles")

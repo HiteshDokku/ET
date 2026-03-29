@@ -34,14 +34,18 @@ def fetch_and_cache_news(self):
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        from app.services.news_service import fetch_all_feeds
+        from app.services.news_service import fetch_all_feeds, enrich_articles_with_images
         articles = loop.run_until_complete(fetch_all_feeds())
+
+        # ── Attach cover images before caching ────────────────
+        logger.info("🖼️  Celery: Enriching articles with cover images...")
+        articles = loop.run_until_complete(enrich_articles_with_images(articles))
         loop.close()
 
         r = redis_lib.from_url(settings.REDIS_URL, decode_responses=True)
         r.setex("news:pool", 1800, json.dumps(articles, default=str))
 
-        logger.info(f"✅ Celery: Cached {len(articles)} articles in Redis")
+        logger.info(f"✅ Celery: Cached {len(articles)} articles (with images) in Redis")
         return {"status": "success", "count": len(articles)}
 
     except Exception as exc:
@@ -92,12 +96,10 @@ def priority_scrape(self, user_id: int, profile: dict):
         from app.intel.personalized_agent import PersonalizedIntelAgent
         agent = PersonalizedIntelAgent(profile)
         result = loop.run_until_complete(agent.run())
-        loop.close()
 
         articles = result.get("articles", [])
-        elapsed = round(time.time() - t0, 2)
 
-        # Convert to feed format and cache
+        # Convert to feed format
         feed_data = []
         for art in articles:
             feed_data.append({
@@ -109,6 +111,14 @@ def priority_scrape(self, user_id: int, profile: dict):
                 "published": art.get("published", ""),
                 "agent_curated": True,
             })
+
+        # ── Attach cover images before caching ────────────────
+        from app.services.news_service import enrich_articles_with_images
+        logger.info("🖼️  Enriching priority-scraped articles with cover images...")
+        feed_data = loop.run_until_complete(enrich_articles_with_images(feed_data))
+        loop.close()
+
+        elapsed = round(time.time() - t0, 2)
 
         r.setex(f"feed:{user_id}", 300, json.dumps(feed_data, default=str))
         r.setex(

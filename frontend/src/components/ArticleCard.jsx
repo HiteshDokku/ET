@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from '../utils/i18n'
 
 const CATEGORY_BADGE_CLASS = {
@@ -13,6 +14,8 @@ const CATEGORY_BADGE_CLASS = {
 
 export default function ArticleCard({ article, onVideoGenerate, language = 'English' }) {
   const { t } = useTranslation(language)
+  const [imgLoaded, setImgLoaded] = useState(false)
+  const [imgError, setImgError] = useState(false)
 
   const {
     title,
@@ -28,6 +31,7 @@ export default function ArticleCard({ article, onVideoGenerate, language = 'Engl
     ai_generated,
     agent_curated,
     published,
+    image_url,
   } = article
 
   const badgeClass = CATEGORY_BADGE_CLASS[category?.toLowerCase()] || 'badge--general'
@@ -40,6 +44,25 @@ export default function ArticleCard({ article, onVideoGenerate, language = 'Engl
 
   return (
     <div className="article-card" id={`article-${title?.substring(0, 20)?.replace(/\s/g, '-')}`}>
+
+      {/* ── Cover Image ── */}
+      {image_url && !imgError && (
+        <div className={`article-card__image-wrapper ${imgLoaded ? '' : 'article-card__image-skeleton'}`}>
+          <img
+            className="article-card__image"
+            src={image_url}
+            alt={title || 'Article cover'}
+            loading="lazy"
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgError(true)}
+          />
+        </div>
+      )}
+      {/* Fallback gradient if image fails */}
+      {imgError && (
+        <div className="article-card__image-wrapper article-card__image-fallback" />
+      )}
+
       <div className="article-card__header">
         {source && <span className="badge badge--source">{source}</span>}
         {category && <span className={`badge ${badgeClass}`}>{category}</span>}

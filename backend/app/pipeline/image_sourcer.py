@@ -15,6 +15,51 @@ logger = logging.getLogger(__name__)
 
 PEXELS_API_URL = "https://api.pexels.com/v1/search"
 
+# ── Default fallback placeholder for article cards ────────────
+DEFAULT_ARTICLE_IMAGE = "https://images.pexels.com/photos/518543/pexels-photo-518543.jpeg?auto=compress&cs=tinysrgb&w=800"
+
+
+def get_pexels_image_url(query: str) -> str | None:
+    """Fetch a Pexels image URL without downloading to disk.
+
+    Used by the news feed pipeline to attach cover images to article cards.
+    Returns the remote URL string (large landscape) or None on failure.
+    """
+    if not settings.pexels_api_key:
+        logger.warning("Pexels API key not configured — skipping image lookup")
+        return None
+
+    headers = {"Authorization": settings.pexels_api_key}
+    params = {
+        "query": query,
+        "per_page": 5,
+        "orientation": "landscape",
+        "size": "medium",
+    }
+
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            resp = client.get(PEXELS_API_URL, headers=headers, params=params)
+            resp.raise_for_status()
+            photos = resp.json().get("photos", [])
+
+            if not photos:
+                # Retry with first keyword only
+                first_word = query.split()[0] if query.split() else "news"
+                params["query"] = first_word
+                resp = client.get(PEXELS_API_URL, headers=headers, params=params)
+                resp.raise_for_status()
+                photos = resp.json().get("photos", [])
+
+            if photos:
+                photo = random.choice(photos[:3])
+                return photo["src"].get("large", photo["src"].get("large2x"))
+
+    except Exception as e:
+        logger.warning(f"Pexels URL lookup failed for '{query}': {e}")
+
+    return None
+
 
 def source_images(visual_plan: VisualPlan, job_id: str, scraped_image_urls: list[str] = None) -> dict[int, str]:
     """Download images for each scene from Pexels, or directly via scraped URLs."""
