@@ -15,6 +15,7 @@ class ArticleInput(BaseModel):
 class StoryRequest(BaseModel):
     topic: str
     articles: list[ArticleInput]
+    language: str = "English"
 
 
 class TimelineEvent(BaseModel):

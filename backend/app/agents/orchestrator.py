@@ -2,7 +2,7 @@
 Agent Orchestrator — Real-time Agentic Dashboard Feed
 
 Pipeline:
- 1. Check Redis feed:{user_id} for a FRESH cached feed (5 min grace)
+ 1. Check Redis feed:{user_id} for a FRESH cached feed (24 h grace)
     → If valid, return immediately (prevents rapid-refresh hammering)
  2. Otherwise, ALWAYS run the PersonalizedIntelAgent:
     → Generates queries from ALL user interests
@@ -11,7 +11,7 @@ Pipeline:
     → Gap analysis across interests → re-iterates if needed
     → **LLM Final Ranking** (replaces TF-IDF — AI assigns matched_interest)
  3. Rewrite each article with role-appropriate AI personalization
- 4. Cache result in Redis feed:{user_id} (5 min TTL)
+ 4. Cache result in Redis feed:{user_id} (24 h TTL)
  5. Return 15 articles covering all user interests
 """
 
@@ -28,8 +28,8 @@ from app.services.news_service import llm_rank_articles
 from app.services.ai_service import rewrite_article_for_user
 from app.config import settings
 
-# Short-lived grace period to prevent hammer-refresh (5 minutes)
-FEED_GRACE_TTL = 300
+# Grace period to prevent hammer-refresh (24 hours)
+FEED_GRACE_TTL = 86400
 
 
 async def build_personalized_feed(user_id: int, redis_client, language: str = "English") -> List[Dict]:
@@ -37,10 +37,12 @@ async def build_personalized_feed(user_id: int, redis_client, language: str = "E
     Build a real-time personalized feed for the Dashboard.
 
     ALWAYS prioritizes a fresh agent scrape over stale cache.
-    Only returns cached data during the 5-minute grace window
+    Only returns cached data during the 24-hour grace window
     to prevent excessive LLM / RSS calls on rapid refreshes.
 
     Ranking is now 100% LLM-driven — no TF-IDF or cosine similarity.
+    Graceful degradation: if the Groq API fails after 2 attempts,
+    returns an empty feed rather than crashing with a 500.
     """
     print(f"\n🤖 Orchestrator: Building feed for user {user_id}")
 
@@ -73,9 +75,22 @@ async def build_personalized_feed(user_id: int, redis_client, language: str = "E
               f"(TTL: {redis_client.ttl(f'feed:{user_id}')}s remaining)")
         return cached
 
-    # ── Step 3: Run PersonalizedIntelAgent ─────────────────────
-    print("🧠 Launching PersonalizedIntelAgent for real-time scraping...")
-    agent_articles = await _run_agent(profile)
+    # ── Step 3: Run PersonalizedIntelAgent (with graceful degradation) ──
+    MAX_AGENT_ATTEMPTS = 2
+    agent_articles = None
+
+    for attempt in range(1, MAX_AGENT_ATTEMPTS + 1):
+        try:
+            print(f"🧠 Launching PersonalizedIntelAgent (attempt {attempt}/{MAX_AGENT_ATTEMPTS})...")
+            agent_articles = await _run_agent(profile)
+            break  # success — exit retry loop
+        except Exception as agent_err:
+            print(f"❌ GROQ_API_ERROR (attempt {attempt}/{MAX_AGENT_ATTEMPTS}): {agent_err}")
+            if attempt == MAX_AGENT_ATTEMPTS:
+                print(f"⚠️  All {MAX_AGENT_ATTEMPTS} agent attempts failed for user {user_id}. "
+                      f"Returning empty fallback feed.")
+                cache_feed(user_id, [], ttl_seconds=60)
+                return []
 
     if not agent_articles:
         print(f"⚠️  Agent returned no articles for user {user_id}")
@@ -84,21 +99,24 @@ async def build_personalized_feed(user_id: int, redis_client, language: str = "E
 
     print(f"📦 Agent returned {len(agent_articles)} curated articles")
 
-    # ── Step 4: LLM Heuristic Ranking ─────────────────────────
+    # ── Step 4: LLM Heuristic Ranking (with graceful degradation) ─────
     # The agent already does an LLM ranking pass internally.
     # But if we got raw (un-ranked) articles, run the service-level ranker.
-    if not any(a.get("reason_for_selection") for a in agent_articles):
-        print("🧠 Running LLM Heuristic Ranker on agent output...")
-        ranked = await llm_rank_articles(
-            agent_articles,
-            profile,
-            top_n=settings.MAX_ARTICLES_PER_FEED,
-            language=language
-        )
-    else:
-        # Agent already ranked — just slice to limit
-        ranked = agent_articles[:settings.MAX_ARTICLES_PER_FEED]
-        print(f"🎯 Agent pre-ranked: using {len(ranked)} articles")
+    ranked = agent_articles[:settings.MAX_ARTICLES_PER_FEED]  # safe default
+    try:
+        if not any(a.get("reason_for_selection") for a in agent_articles):
+            print("🧠 Running LLM Heuristic Ranker on agent output...")
+            ranked = await llm_rank_articles(
+                agent_articles,
+                profile,
+                top_n=settings.MAX_ARTICLES_PER_FEED,
+                language=language
+            )
+        else:
+            ranked = agent_articles[:settings.MAX_ARTICLES_PER_FEED]
+            print(f"🎯 Agent pre-ranked: using {len(ranked)} articles")
+    except Exception as rank_err:
+        print(f"❌ GROQ_API_ERROR during ranking — using unranked fallback: {rank_err}")
 
     if not ranked:
         cache_feed(user_id, [], ttl_seconds=60)

@@ -118,14 +118,15 @@ HARD FAIL CONDITIONS (if any apply, add to hard_fails):
 
 Score each dimension 0.0 to 1.0. Be objective and critical."""
 
+    MAX_ATTEMPTS = 2
     last_error = None
-    for attempt in range(3):
+    for attempt in range(MAX_ATTEMPTS):
         try:
             response = client.chat.completions.create(
-                model="openai/gpt-oss-120b",
+                model="llama3-8b-8192",
                 messages=[
-                    {"role": "system", "content": QA_SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
+                    {"role": "system", "content": str(QA_SYSTEM_PROMPT)},
+                    {"role": "user", "content": str(prompt)}
                 ],
                 temperature=0.3,
                 max_tokens=2048,
@@ -137,8 +138,8 @@ Score each dimension 0.0 to 1.0. Be objective and critical."""
             break
         except Exception as e:
             last_error = e
-            logger.warning(f"QA validation attempt {attempt+1} failed: {e}")
-            if attempt < 2:
+            logger.warning(f"QA validation attempt {attempt+1}/{MAX_ATTEMPTS} failed: {e}")
+            if attempt < MAX_ATTEMPTS - 1:
                 time.sleep(2)
     else:
         raise last_error

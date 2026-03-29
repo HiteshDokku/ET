@@ -40,8 +40,10 @@ async def generate_briefing_endpoint(req: TopicRequest):
         agent = ScrapingAgent(req.topic)
         curated_articles = await agent.run()
 
+        # ── Guard: empty / None result → graceful 200 with empty_state ──
         if not curated_articles:
             return {
+                "empty_state": True,
                 "briefing": {
                     "Summary": "No articles found for this topic.",
                     "Key Insights": ["Try another topic or broaden your search."],
@@ -57,12 +59,15 @@ async def generate_briefing_endpoint(req: TopicRequest):
         result = await generate_briefing(articles_as_dicts, language=req.language)
 
         return {
+            "empty_state": False,
             "briefing": result.get("briefing", {}),
             "followups": result.get("followups", []),
             "articles": articles_as_dicts,
         }
 
     except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"GROQ_API_ERROR | /api/intel/generate | {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
 
 
@@ -80,7 +85,7 @@ async def generate_arc_endpoint(req: TopicRequest):
         if not curated_articles:
             raise HTTPException(status_code=404, detail="No articles found for this topic.")
 
-        story_request = StoryRequest(topic=req.topic, articles=curated_articles)
+        story_request = StoryRequest(topic=req.topic, articles=curated_articles, language=req.language)
         result = await analyze_story(story_request)
         result.articles = curated_articles
 

@@ -19,10 +19,11 @@ Return a JSON object with this exact structure:
 Extract ALL distinct events. Be precise with dates. Identify all named entities."""
 
 
-async def extract_events(article_id: str, article_title: str, article_content: str) -> dict:
-    """Extract events from a single article."""
+async def extract_events(article_id: str, article_title: str, article_content: str,
+                         language: str = "English") -> dict:
+    """Extract events from a single article in the requested language."""
     user_prompt = f"Article Title: {article_title}\n\nArticle Content:\n{article_content}"
-    result = await ask_llm(SYSTEM_PROMPT, user_prompt)
+    result = await ask_llm(SYSTEM_PROMPT, user_prompt, language=language)
 
     for event in result.get("events", []):
         event["source_articles"] = [article_id]

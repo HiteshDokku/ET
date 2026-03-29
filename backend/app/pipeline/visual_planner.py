@@ -103,14 +103,15 @@ REQUIREMENTS:
   * "pie": Use ONLY for percentages that add up to exactly 100%.
   * "line": Use for trends across time (e.g. 3+ temporal data points)."""
 
+    MAX_ATTEMPTS = 2
     last_error = None
-    for attempt in range(3):
+    for attempt in range(MAX_ATTEMPTS):
         try:
             response = client.chat.completions.create(
-                model="openai/gpt-oss-120b",
+                model="llama-3.3-70b-versatile",
                 messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
+                    {"role": "system", "content": str(system_prompt)},
+                    {"role": "user", "content": str(user_prompt)}
                 ],
                 temperature=0.7,
                 max_tokens=8192,
@@ -146,8 +147,8 @@ REQUIREMENTS:
             break
         except Exception as e:
             last_error = e
-            logger.warning(f"Visual plan attempt {attempt+1} failed: {e}")
-            if attempt < 2:
+            logger.warning(f"Visual plan attempt {attempt+1}/{MAX_ATTEMPTS} failed: {e}")
+            if attempt < MAX_ATTEMPTS - 1:
                 time.sleep(2)
     else:
         raise last_error

@@ -1,6 +1,7 @@
 """Orchestrates the full story arc analysis pipeline."""
 
 import asyncio
+import logging
 import uuid
 from app.models.intel import (
     StoryRequest, StoryArcResponse, TimelineEvent,
@@ -10,14 +11,28 @@ from app.intel.event_extractor import extract_events
 from app.intel.contrarian_detector import detect_contrarian
 from app.intel.prediction_engine import generate_predictions
 
+logger = logging.getLogger(__name__)
+
 
 async def analyze_story(request: StoryRequest) -> StoryArcResponse:
-    """Run full pipeline and return structured StoryArcResponse."""
+    """Run full pipeline and return structured StoryArcResponse.
+
+    Respects request.language — all LLM-generated text (event titles,
+    summaries, stances, contrarian insights, predictions) will be
+    produced in the requested language.
+    """
+    language = request.language or "English"
 
     extraction_results = []
     for a in request.articles:
-        result = await extract_events(a.id, a.title, a.content)
-        extraction_results.append(result)
+        try:
+            result = await extract_events(a.id, a.title, a.content, language=language)
+            extraction_results.append(result)
+        except Exception as exc:
+            logger.warning(
+                f"⚠️  Skipping article '{a.title}' — extraction failed: "
+                f"{type(exc).__name__}: {exc}"
+            )
         await asyncio.sleep(2.0)
 
     all_events: list[TimelineEvent] = []
@@ -74,19 +89,30 @@ async def analyze_story(request: StoryRequest) -> StoryArcResponse:
     events_summary = "\n".join(
         f"- [{e.date}] {e.title}: {e.summary}" for e in all_events
     )
-    story_summary = (
-        f"Analysis of '{request.topic}' across {len(request.articles)} articles. "
-        f"Found {len(all_events)} events involving {len(all_entities)} entities. "
-        f"Overall sentiment: {overall}."
+    # Language-aware summary templates
+    _SUMMARY_TEMPLATES = {
+        "english": "Analysis of '{topic}' across {articles} articles. Found {events} events involving {entities} entities. Overall sentiment: {sentiment}.",
+        "hindi": "'{topic}' का विश्लेषण {articles} लेखों में किया गया। {events} घटनाएं और {entities} संस्थाएं पाई गईं। समग्र भावना: {sentiment}।",
+        "marathi": "'{topic}' चे {articles} लेखांमध्ये विश्लेषण केले. {events} घटना आणि {entities} संस्था आढळल्या. एकूण भावना: {sentiment}.",
+        "telugu": "'{topic}' విశ్లేషణ {articles} కథనాలలో జరిగింది. {events} సంఘటనలు మరియు {entities} సంస్థలు కనుగొనబడ్డాయి. మొత్తం భావన: {sentiment}.",
+        "kannada": "'{topic}' ವಿಶ್ಲೇಷಣೆ {articles} ಲೇಖನಗಳಲ್ಲಿ ನಡೆಯಿತು. {events} ಘಟನೆಗಳು ಮತ್ತು {entities} ಸಂಸ್ಥೆಗಳು ಕಂಡುಬಂದವು. ಒಟ್ಟಾರೆ ಭಾವನೆ: {sentiment}.",
+    }
+    tpl = _SUMMARY_TEMPLATES.get(language.lower(), _SUMMARY_TEMPLATES["english"])
+    story_summary = tpl.format(
+        topic=request.topic,
+        articles=len(request.articles),
+        events=len(all_events),
+        entities=len(all_entities),
+        sentiment=overall,
     )
 
     if all_stances:
-        contrarian_result = await detect_contrarian(request.topic, all_stances)
+        contrarian_result = await detect_contrarian(request.topic, all_stances, language=language)
         await asyncio.sleep(2.0)
     else:
         contrarian_result = {"mainstream": "No stances available", "contrarian": []}
 
-    predictions = await generate_predictions(request.topic, story_summary, events_summary)
+    predictions = await generate_predictions(request.topic, story_summary, events_summary, language=language)
 
     contrarian_insights = ContrarianInsights(
         mainstream=contrarian_result.get("mainstream", ""),

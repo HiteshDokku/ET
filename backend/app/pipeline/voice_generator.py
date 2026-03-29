@@ -1,4 +1,4 @@
-"""Voice generation service using ElevenLabs TTS."""
+"""Voice generation service using ElevenLabs TTS with edge-tts fallback."""
 
 import os
 import logging
@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 # Cache for discovered voice ID
 _cached_voice_id: str | None = None
 
+# Session-level flag: bypass ElevenLabs after HTTP 402 (quota exceeded)
+_elevenlabs_disabled: bool = False
+
 # Language → edge-tts voice mapping
 EDGE_TTS_VOICES = {
     "english": "en-US-ChristopherNeural",
@@ -26,6 +29,14 @@ EDGE_TTS_VOICES = {
     "telugu": "te-IN-MohanNeural",
     "kannada": "kn-IN-PrabhatNeural",
 }
+
+
+def _is_402_error(exc: Exception) -> bool:
+    """Check if an exception is an ElevenLabs HTTP 401/402 (unauthorized or quota exceeded)."""
+    err_str = str(exc)
+    return ("402" in err_str or "401" in err_str or
+            "quota" in err_str.lower() or "exceeded" in err_str.lower() or
+            "unauthorized" in err_str.lower())
 
 
 def _get_available_voice_id(client: ElevenLabs) -> str:
@@ -74,9 +85,31 @@ def _get_available_voice_id(client: ElevenLabs) -> str:
     return _cached_voice_id
 
 
+def _generate_edge_tts(text: str, output_path: str, language: str = "English"):
+    """Generate TTS audio using edge-tts (free, no API key needed)."""
+    import subprocess
+    clean_text = text.replace("*", "").replace('"', '').replace('\n', ' ')
+    edge_voice = EDGE_TTS_VOICES.get(language.lower(), "en-US-ChristopherNeural")
+    cmd = [
+        "edge-tts",
+        "--voice", edge_voice,
+        "--text", clean_text,
+        "--write-media", output_path
+    ]
+    result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise Exception(f"edge-tts exit {result.returncode}: {result.stderr}")
+
+
 def generate_voice(script: Script, job_id: str,
                    voice_id: str = None, language: str = "English") -> VoiceResult:
-    """Generate TTS audio for each script segment using ElevenLabs."""
+    """Generate TTS audio for each script segment.
+
+    Uses ElevenLabs by default. If a 402 (quota exceeded) is detected,
+    permanently falls back to edge-tts for the rest of this session.
+    """
+    global _elevenlabs_disabled
+
     work_dir = job_dir(job_id)
     audio_dir = os.path.join(work_dir, "audio")
     os.makedirs(audio_dir, exist_ok=True)
@@ -85,7 +118,7 @@ def generate_voice(script: Script, job_id: str,
 
     # Auto-discover a working voice if none provided
     vid = voice_id or _get_available_voice_id(client)
-    logger.info(f"Using voice ID: {vid}")
+    logger.info(f"Using voice ID: {vid} | ElevenLabs disabled: {_elevenlabs_disabled}")
 
     segments: list[VoiceSegment] = []
     audio_clips: list[AudioSegment] = []
@@ -94,40 +127,41 @@ def generate_voice(script: Script, job_id: str,
         seg.text = seg.text.replace("*", "").replace('"', '').replace('\n', ' ')
         seg_path = os.path.join(audio_dir, f"segment_{seg.segment_id}.mp3")
 
-        try:
-            # Generate audio
-            audio_generator = client.text_to_speech.convert(
-                voice_id=vid,
-                text=seg.text,
-                model_id=ELEVENLABS_MODEL,
-                output_format="mp3_44100_128",
-            )
+        generated = False
 
-            # Write audio bytes
-            with open(seg_path, "wb") as f:
-                for chunk in audio_generator:
-                    f.write(chunk)
-
-        except Exception as e:
-            logger.warning(f"ElevenLabs TTS failed for segment {seg.segment_id} ({e}), falling back to edge-tts...")
+        # Try ElevenLabs first (unless disabled by prior 402)
+        if not _elevenlabs_disabled:
             try:
-                import subprocess
-                clean_text = seg.text.replace("*", "").replace('"', '').replace('\n', ' ')
-                edge_voice = EDGE_TTS_VOICES.get(language.lower(), "en-US-ChristopherNeural")
-                cmd = [
-                    "edge-tts",
-                    "--voice", edge_voice,
-                    "--text", clean_text,
-                    "--write-media", seg_path
-                ]
-                result = subprocess.run(cmd, check=False, capture_output=True, text=True)
-                if result.returncode != 0:
-                    raise Exception(f"edge-tts exit {result.returncode}: {result.stderr}")
+                audio_generator = client.text_to_speech.convert(
+                    voice_id=vid,
+                    text=seg.text,
+                    model_id=ELEVENLABS_MODEL,
+                    output_format="mp3_44100_128",
+                )
+                with open(seg_path, "wb") as f:
+                    for chunk in audio_generator:
+                        f.write(chunk)
+                generated = True
+            except Exception as e:
+                if _is_402_error(e):
+                    _elevenlabs_disabled = True
+                    logger.warning(
+                        f"ElevenLabs 402 quota exceeded — disabling for remainder of session. "
+                        f"Falling back to edge-tts for all segments."
+                    )
+                else:
+                    logger.warning(f"ElevenLabs TTS failed for segment {seg.segment_id} ({e})")
+
+        # Fallback to edge-tts
+        if not generated:
+            try:
+                logger.info(f"Using edge-tts for segment {seg.segment_id}")
+                _generate_edge_tts(seg.text, seg_path, language)
             except Exception as fallback_e:
                 logger.error(f"Fallback edge-tts also failed: {fallback_e}")
                 raise
 
-        # Measure duration from the generated file (whether from ElevenLabs or edge-tts)
+        # Measure duration from the generated file
         clip = AudioSegment.from_mp3(seg_path)
         duration_sec = len(clip) / 1000.0
         word_count = count_words(seg.text)
@@ -210,43 +244,55 @@ def _validate_voice(result: VoiceResult):
 
 
 def generate_quick_audio(text: str, voice_id: str = None, language: str = "English") -> bytes:
-    """Generate TTS audio quickly without saving to disk."""
-    client = ElevenLabs(api_key=settings.elevenlabs_api_key)
-    vid = voice_id or _get_available_voice_id(client)
-    
+    """Generate TTS audio quickly without saving to disk.
+
+    Falls back to edge-tts if ElevenLabs is disabled or fails.
+    """
+    global _elevenlabs_disabled
+
     clean_text = text.replace("*", "").replace('"', '').replace('\n', ' ')
+
+    # Try ElevenLabs unless disabled
+    if not _elevenlabs_disabled:
+        try:
+            client = ElevenLabs(api_key=settings.elevenlabs_api_key)
+            vid = voice_id or _get_available_voice_id(client)
+            audio_generator = client.text_to_speech.convert(
+                voice_id=vid,
+                text=clean_text,
+                model_id=ELEVENLABS_MODEL,
+                output_format="mp3_44100_128",
+            )
+            audio_bytes = b"".join(chunk for chunk in audio_generator)
+            return audio_bytes
+        except Exception as e:
+            if _is_402_error(e):
+                _elevenlabs_disabled = True
+                logger.warning(f"ElevenLabs 402 — disabling for session, using edge-tts.")
+            else:
+                logger.warning(f"Quick ElevenLabs TTS failed ({e}), falling back to edge-tts...")
+
+    # Edge-tts fallback
+    import subprocess
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+        tmp_path = tmp.name
     
-    try:
-        audio_generator = client.text_to_speech.convert(
-            voice_id=vid,
-            text=clean_text,
-            model_id=ELEVENLABS_MODEL,
-            output_format="mp3_44100_128",
-        )
-        audio_bytes = b"".join(chunk for chunk in audio_generator)
-        return audio_bytes
-    except Exception as e:
-        logger.warning(f"Quick ElevenLabs TTS failed ({e}), falling back to edge-tts...")
-        import subprocess
-        import tempfile
-        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-            tmp_path = tmp.name
+    edge_voice = EDGE_TTS_VOICES.get(language.lower(), "en-US-ChristopherNeural")
+    cmd = [
+        "edge-tts",
+        "--voice", edge_voice,
+        "--text", clean_text,
+        "--write-media", tmp_path
+    ]
+    result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    if result.returncode != 0:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        raise Exception(f"Quick edge-tts fallback failed: {result.stderr}")
         
-        edge_voice = EDGE_TTS_VOICES.get(language.lower(), "en-US-ChristopherNeural")
-        cmd = [
-            "edge-tts",
-            "--voice", edge_voice,
-            "--text", clean_text,
-            "--write-media", tmp_path
-        ]
-        result = subprocess.run(cmd, check=False, capture_output=True, text=True)
-        if result.returncode != 0:
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
-            raise Exception(f"Quick edge-tts fallback failed: {result.stderr}")
-            
-        with open(tmp_path, "rb") as f:
-            audio_bytes = f.read()
-            
-        os.remove(tmp_path)
-        return audio_bytes
+    with open(tmp_path, "rb") as f:
+        audio_bytes = f.read()
+        
+    os.remove(tmp_path)
+    return audio_bytes

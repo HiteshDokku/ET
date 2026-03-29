@@ -31,8 +31,8 @@ def get_cached_feed(user_id: int) -> list | None:
     return None
 
 
-def cache_feed(user_id: int, feed: list, ttl_seconds: int = 900):
-    """Save a user's personalized feed in Redis (15 min TTL)."""
+def cache_feed(user_id: int, feed: list, ttl_seconds: int = 86400):
+    """Save a user's personalized feed in Redis (24 h TTL)."""
     redis_client.setex(
         f"feed:{user_id}",
         ttl_seconds,
@@ -57,5 +57,6 @@ def update_engagement(user_id: int, category: str, delta: float = 0.1):
     engagement[category] = min(1.0, max(0.0, current + delta))
     profile["engagement"] = engagement
 
-    redis_client.setex(f"user:{user_id}", 86400, json.dumps(profile))
+    # Use SET (no expiry) so the user profile key is never lost prematurely
+    redis_client.set(f"user:{user_id}", json.dumps(profile))
     redis_client.delete(f"feed:{user_id}")

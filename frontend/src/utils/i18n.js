@@ -61,6 +61,16 @@ export const translations = {
     hub_loading_title: "Agent is processing...",
     hub_loading_sub: "Collecting intel, generating insights.",
 
+    // ── Story Arc Section Headings ──
+    arc_story_summary: "Story Summary",
+    arc_timeline: "Timeline",
+    arc_key_players: "Key Players",
+    arc_sentiment: "Sentiment",
+    arc_overall: "Overall",
+    arc_contrarian: "Contrarian Insights",
+    arc_mainstream: "Mainstream",
+    arc_what_to_watch: "What to Watch",
+
     // ── VideoModal ──
     video_ready: "🎬 Video Ready",
     video_failed: "⚠️ Generation Failed",
@@ -151,6 +161,15 @@ export const translations = {
     hub_loading_title: "एजेंट प्रोसेसिंग कर रहा है...",
     hub_loading_sub: "इंटेल कलेक्ट कर रहा है, इनसाइट्स जेनरेट कर रहा है।",
 
+    arc_story_summary: "कहानी का सारांश",
+    arc_timeline: "समयरेखा",
+    arc_key_players: "प्रमुख किरदार",
+    arc_sentiment: "भावना",
+    arc_overall: "कुल मिलाकर",
+    arc_contrarian: "विपरीत दृष्टिकोण",
+    arc_mainstream: "मुख्यधारा",
+    arc_what_to_watch: "आगे क्या देखें",
+
     video_ready: "🎬 वीडियो तैयार",
     video_failed: "⚠️ जेनरेशन विफल",
     video_generating: "⚡ वीडियो जेनरेट हो रहा है",
@@ -238,6 +257,15 @@ export const translations = {
     hub_ask_voice: "🎙️ विचारा (आवाज)",
     hub_loading_title: "एजंट प्रोसेसिंग करत आहे...",
     hub_loading_sub: "इंटेल गोळा करत आहे, इनसाइट्स तयार करत आहे.",
+
+    arc_story_summary: "कथेचा सारांश",
+    arc_timeline: "समयरेषा",
+    arc_key_players: "प्रमुख व्यक्ती",
+    arc_sentiment: "भावना",
+    arc_overall: "एकूणच",
+    arc_contrarian: "विरोधी दृष्टिकोन",
+    arc_mainstream: "मुख्य प्रवाह",
+    arc_what_to_watch: "पुढे काय पहावे",
 
     video_ready: "🎬 व्हिडिओ तयार",
     video_failed: "⚠️ निर्मिती अयशस्वी",
@@ -327,6 +355,15 @@ export const translations = {
     hub_loading_title: "ఏజెంట్ ప్రాసెస్ చేస్తోంది...",
     hub_loading_sub: "ఇంటెల్ సేకరిస్తోంది, ఇన్‌సైట్‌లు జనరేట్ చేస్తోంది.",
 
+    arc_story_summary: "కథ సారాంశం",
+    arc_timeline: "సమయరేఖ",
+    arc_key_players: "ప్రముఖ వ్యక్తులు",
+    arc_sentiment: "భావన",
+    arc_overall: "మొత్తంగా",
+    arc_contrarian: "విభిన్న దృక్పథాలు",
+    arc_mainstream: "ప్రధాన స్రవంతి",
+    arc_what_to_watch: "తదుపరి ఏమి చూడాలి",
+
     video_ready: "🎬 వీడియో సిద్ధం",
     video_failed: "⚠️ జనరేషన్ విఫలమైంది",
     video_generating: "⚡ వీడియో జనరేట్ అవుతోంది",
@@ -414,6 +451,15 @@ export const translations = {
     hub_ask_voice: "🎙️ ಕೇಳಿ (ಧ್ವನಿ)",
     hub_loading_title: "ಏಜೆಂಟ್ ಪ್ರಕ್ರಿಯೆಗೊಳಿಸುತ್ತಿದೆ...",
     hub_loading_sub: "ಇಂಟೆಲ್ ಸಂಗ್ರಹಿಸುತ್ತಿದೆ, ಒಳನೋಟಗಳನ್ನು ರಚಿಸುತ್ತಿದೆ.",
+
+    arc_story_summary: "ಕಥೆಯ ಸಾರಾಂಶ",
+    arc_timeline: "ಸಮಯರೇಖೆ",
+    arc_key_players: "ಪ್ರಮುಖ ವ್ಯಕ್ತಿಗಳು",
+    arc_sentiment: "ಭಾವನೆ",
+    arc_overall: "ಒಟ್ಟಾರೆ",
+    arc_contrarian: "ವಿರುದ್ಧ ದೃಷ್ಟಿಕೋನಗಳು",
+    arc_mainstream: "ಮುಖ್ಯವಾಹಿನಿ",
+    arc_what_to_watch: "ಮುಂದೆ ಏನು ನೋಡಬೇಕು",
 
     video_ready: "🎬 ವೀಡಿಯೊ ಸಿದ್ಧ",
     video_failed: "⚠️ ಜನರೇಶನ್ ವಿಫಲವಾಯಿತು",

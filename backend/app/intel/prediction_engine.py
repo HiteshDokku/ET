@@ -15,12 +15,13 @@ Return a JSON object:
 Be specific, actionable, and insightful. Avoid generic statements."""
 
 
-async def generate_predictions(topic: str, story_summary: str, events_summary: str) -> list[str]:
-    """Generate what-to-watch-next predictions."""
+async def generate_predictions(topic: str, story_summary: str, events_summary: str,
+                               language: str = "English") -> list[str]:
+    """Generate what-to-watch-next predictions in the requested language."""
     user_prompt = (
         f"Topic: {topic}\n\n"
         f"Story Summary: {story_summary}\n\n"
         f"Key Events:\n{events_summary}"
     )
-    result = await ask_llm(SYSTEM_PROMPT, user_prompt)
+    result = await ask_llm(SYSTEM_PROMPT, user_prompt, language=language)
     return result.get("predictions", [])

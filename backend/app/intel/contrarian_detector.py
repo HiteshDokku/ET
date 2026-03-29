@@ -15,10 +15,11 @@ Return a JSON object:
 If all stances are similar, return an empty contrarian list and explain the consensus in mainstream."""
 
 
-async def detect_contrarian(topic: str, stances: list[str]) -> dict:
-    """Identify mainstream vs contrarian viewpoints."""
+async def detect_contrarian(topic: str, stances: list[str],
+                            language: str = "English") -> dict:
+    """Identify mainstream vs contrarian viewpoints in the requested language."""
     user_prompt = f"Topic: {topic}\n\nArticle stances:\n"
     for i, stance in enumerate(stances, 1):
         user_prompt += f"{i}. {stance}\n"
 
-    return await ask_llm(SYSTEM_PROMPT, user_prompt)
+    return await ask_llm(SYSTEM_PROMPT, user_prompt, language=language)

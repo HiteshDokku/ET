@@ -5,12 +5,17 @@ ENV PYTHONUNBUFFERED=1
 ENV IMAGEMAGICK_BINARY=/usr/bin/convert
 
 # System dependencies (ffmpeg for video, imagemagick for text rendering, chromium for scraping)
-# fonts-noto-core provides Noto Sans for Devanagari, Telugu, Kannada (Indic scripts)
+# Full Indic/CJK font coverage: Noto Sans for Devanagari, Telugu, Kannada, Tamil, Bengali, etc.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     imagemagick \
     fonts-liberation \
     fonts-noto-core \
+    fonts-noto-ui-core \
+    fonts-noto-extra \
+    fonts-noto-cjk \
+    fonts-indic \
+    fontconfig \
     wget \
     chromium \
     chromium-driver \
@@ -41,7 +46,8 @@ RUN ln -sf /usr/share/fonts/truetype/noto/NotoSansDevanagari-Bold.ttf /app/fonts
     ln -sf /usr/share/fonts/truetype/noto/NotoSansTelugu-Regular.ttf /app/fonts/NotoSansTelugu-Regular.ttf || true && \
     ln -sf /usr/share/fonts/truetype/noto/NotoSansKannada-Regular.ttf /app/fonts/NotoSansKannada-Regular.ttf || true
 
-# Rebuild matplotlib font cache so it picks up Noto Sans
+# Rebuild system font cache + matplotlib font cache so they pick up Noto Sans
+RUN fc-cache -f -v 2>/dev/null || true
 RUN python -c "import matplotlib.font_manager; matplotlib.font_manager._load_fontmanager(try_read_cache=False)" || true
 
 # Set Chrome env for Selenium

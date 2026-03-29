@@ -12,6 +12,9 @@ from PIL import Image, ImageDraw, ImageFont
 import datetime
 import yfinance as yf
 
+# Prevent 'database is locked' errors from the yfinance TZ cache in containers
+yf.set_tz_cache_location("/tmp/yf_cache")
+
 from app.config import (
     WIDTH, HEIGHT, FPS, FONT_BOLD, FONT_EXTRABOLD, FONT_SEMIBOLD
 )

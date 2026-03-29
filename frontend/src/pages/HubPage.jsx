@@ -153,28 +153,36 @@ export default function HubPage({ profile }) {
         }
       } else {
         // Story arc
-        let md = `## Story Summary\n${data.story_summary}\n\n`
+        let md = `## ${t('arc_story_summary')}\n${data.story_summary}\n\n`
         if (data.timeline?.length > 0) {
-          md += `## Timeline\n`
-          data.timeline.forEach(evt => {
+          // Filter out events with "Unknown" dates
+          const dated = data.timeline.filter(evt => evt.date && evt.date !== 'Unknown')
+          const undated = data.timeline.filter(evt => !evt.date || evt.date === 'Unknown')
+          
+          md += `## ${t('arc_timeline')}\n`
+          dated.forEach(evt => {
             md += `**[${evt.date}]** ${evt.title}\n> ${evt.summary}\n\n`
+          })
+          // Undated events are shown without the date prefix
+          undated.forEach(evt => {
+            md += `**${evt.title}**\n> ${evt.summary}\n\n`
           })
         }
         if (data.key_players?.length > 0) {
-          md += `## Key Players\n`
+          md += `## ${t('arc_key_players')}\n`
           md += data.key_players.map(p => `- **${p.name}** — ${p.role}`).join('\n') + '\n\n'
         }
         if (data.sentiment_overview) {
-          md += `## Sentiment\nOverall: **${data.sentiment_overview.overall}**\n\n`
+          md += `## ${t('arc_sentiment')}\n${t('arc_overall')}: **${data.sentiment_overview.overall}**\n\n`
         }
         if (data.contrarian_insights) {
-          md += `## Contrarian Insights\n**Mainstream:** ${data.contrarian_insights.mainstream}\n`
+          md += `## ${t('arc_contrarian')}\n**${t('arc_mainstream')}:** ${data.contrarian_insights.mainstream}\n`
           if (data.contrarian_insights.contrarian?.length > 0) {
             md += data.contrarian_insights.contrarian.map(c => `- ${c}`).join('\n') + '\n\n'
           }
         }
         if (data.what_to_watch?.length > 0) {
-          md += `## What to Watch\n`
+          md += `## ${t('arc_what_to_watch')}\n`
           md += data.what_to_watch.map(p => `- ${p}`).join('\n')
         }
         assistantContent = md

@@ -74,7 +74,28 @@ async def generate_video(request: JobRequest):
 async def job_status(job_id: str):
     """Get the status of a video generation job."""
     data = get_job_status(job_id)
+
+    # If no status in Redis, the job may still be in the Celery queue
+    # Return 'processing' instead of a premature 404
     if not data:
+        # Check if a Celery task with this job_id is pending/active
+        try:
+            from app.celery_app import celery_app
+            task_result = celery_app.AsyncResult(job_id)
+            if task_result and task_result.state in ("PENDING", "STARTED", "RETRY"):
+                return JobStatus(
+                    job_id=job_id,
+                    status=JobState.QUEUED,
+                    progress=0.0,
+                    current_stage="queued",
+                    message="Job is queued and waiting to be processed.",
+                    video_url=None,
+                    qa_report=None,
+                    iteration=0,
+                    error=None,
+                )
+        except Exception:
+            pass
         raise HTTPException(404, f"Job {job_id} not found")
 
     return JobStatus(

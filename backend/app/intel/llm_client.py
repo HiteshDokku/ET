@@ -33,14 +33,23 @@ def _clean_json(text: str) -> str:
 
 
 async def _call(model: str, system_prompt: str, user_prompt: str, temperature: float = 0.4, max_tokens: int = 1500) -> dict | list:
-    """Internal: send a chat completion and return parsed JSON. Retries on rate limit."""
+    """Internal: send a chat completion and return parsed JSON.
+
+    Retries **at most 2 times** (1 initial + 1 retry).
+    Logs structured GROQ_API_ERROR details on every failure.
+    """
     import asyncio
     import logging
     logger = logging.getLogger(__name__)
     client = _get_client()
 
+    MAX_ATTEMPTS = 2
     last_error = None
-    for attempt in range(3):
+    # Ensure content is always a plain string (prevents Groq 400 Bad Request)
+    system_prompt = str(system_prompt)
+    user_prompt = str(user_prompt)
+
+    for attempt in range(MAX_ATTEMPTS):
         try:
             response = await client.chat.completions.create(
                 model=model,
@@ -57,10 +66,17 @@ async def _call(model: str, system_prompt: str, user_prompt: str, temperature: f
         except Exception as e:
             last_error = e
             error_str = str(e)
+            logger.error(
+                f"GROQ_API_ERROR | model={model} | attempt={attempt+1}/{MAX_ATTEMPTS} | "
+                f"type={type(e).__name__} | detail={error_str}"
+            )
             if "429" in error_str or "rate_limit" in error_str.lower():
-                wait = (attempt + 1) * 15  # 15s, 30s, 45s
-                logger.warning(f"Rate limited (attempt {attempt+1}/3), waiting {wait}s...")
+                wait = (attempt + 1) * 15
+                logger.warning(f"Rate limited (attempt {attempt+1}/{MAX_ATTEMPTS}), waiting {wait}s...")
                 await asyncio.sleep(wait)
+            elif attempt < MAX_ATTEMPTS - 1:
+                # Non-rate-limit error — still retry once
+                await asyncio.sleep(2)
             else:
                 raise
     raise last_error
@@ -81,16 +97,30 @@ async def ask_llm_fast(system_prompt: str, user_prompt: str, language: str = "En
 
 
 async def transcribe_audio(file_bytes: bytes, filename: str) -> str:
-    """Use Groq Whisper to transcribe audio input."""
+    """Use Groq Whisper to transcribe audio input. Retries at most 2 times."""
+    import asyncio
+    import logging
+    logger = logging.getLogger(__name__)
     client = _get_client()
-    try:
-        response = await client.audio.transcriptions.create(
-            file=(filename, file_bytes),
-            model="whisper-large-v3",
-            response_format="json"
-        )
-        return response.text
-    except Exception as e:
-        import logging
-        logging.error(f"Transcription failed: {str(e)}")
-        raise
+
+    MAX_ATTEMPTS = 2
+    last_error = None
+    for attempt in range(MAX_ATTEMPTS):
+        try:
+            response = await client.audio.transcriptions.create(
+                file=(filename, file_bytes),
+                model="whisper-large-v3",
+                response_format="json"
+            )
+            return response.text
+        except Exception as e:
+            last_error = e
+            logger.error(
+                f"GROQ_API_ERROR | transcription | attempt={attempt+1}/{MAX_ATTEMPTS} | "
+                f"type={type(e).__name__} | detail={str(e)}"
+            )
+            if attempt < MAX_ATTEMPTS - 1:
+                await asyncio.sleep(2)
+            else:
+                raise
+    raise last_error
