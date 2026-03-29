@@ -3,9 +3,13 @@ import { marked } from 'marked'
 import { useAuth } from '@clerk/clerk-react'
 import { useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import ProfileSetup from '../components/ProfileSetup'
 import './HubPage.css'
 
 const API = '/api'
+
+const ROLE_ICONS = { student: '🎓', investor: '💼', founder: '🚀' }
+const LEVEL_LABELS = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' }
 
 function getConversations() {
   try {
@@ -21,6 +25,15 @@ function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5)
 }
 
+// ── Helper: Get saved profile from localStorage ─────────────────
+function getSavedProfile() {
+  try {
+    const raw = localStorage.getItem('et_user_profile')
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return null
+}
+
 export default function HubPage({ profile }) {
   const { getToken, isSignedIn } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -28,11 +41,15 @@ export default function HubPage({ profile }) {
   
   const [input, setInput] = useState('')
   const [tool, setTool] = useState(null) 
-  const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
   const [activeId, setActiveId] = useState(null)
+  const [showSetup, setShowSetup] = useState(false)
+  const [setupMode, setSetupMode] = useState(null)
   
   const bottomRef = useRef(null)
+
+  // Resolve the user's profile from prop or localStorage
+  const userProfile = profile || getSavedProfile()
 
   // Load conversation from URL ID
   useEffect(() => {
@@ -43,8 +60,8 @@ export default function HubPage({ profile }) {
         setMessages(convo.messages || [])
         setTool(convo.tool || 'navigator')
         setActiveId(urlId)
+        
       } else {
-        // ID not found, reset url
         setSearchParams({})
       }
     }
@@ -61,16 +78,35 @@ export default function HubPage({ profile }) {
     return headers
   }, [isSignedIn, getToken])
 
+  const handleProfileSetup = async (setupData) => {
+    try {
+      const headers = await getAuthHeaders()
+      await fetch(`${API}/auth/profile`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(setupData),
+      })
+      const updatedProfile = { ...userProfile, ...setupData, needs_setup: false }
+      localStorage.setItem('et_user_profile', JSON.stringify(updatedProfile))
+      setShowSetup(false)
+      window.location.reload() // Reload hub to get fresh insights
+    } catch (e) {
+      console.error('Profile setup failed:', e)
+    }
+  }
+
   useEffect(() => {
     if (bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: 'smooth' })
     }
   }, [messages])
 
+  // ── Existing: Topic-based analysis ────────────────────────────
   const startTopic = async (selectedTool) => {
     if (!input.trim() || loading) return
     
     setTool(selectedTool)
+    
     const userMessage = { role: 'user', content: `Analyze: ${input.trim()}` }
     setMessages([userMessage])
     setLoading(true)
@@ -171,13 +207,13 @@ export default function HubPage({ profile }) {
     }
   }
 
+    // ── Follow-up Q&A ────────────────────────────────────────────
   const askFollowup = async (questionText) => {
     if (!questionText.trim() || loading) return
     
     setInput('')
     const userMessage = { role: 'user', content: questionText.trim() }
     
-    // Get context from the last assistant message
     const lastAssistantMsg = messages.slice().reverse().find(m => m.role === 'assistant');
     const contextText = lastAssistantMsg ? lastAssistantMsg.content : '';
 
@@ -202,7 +238,6 @@ export default function HubPage({ profile }) {
       const newMsgs = [...messages, userMessage, assistantMessage]
       setMessages(newMsgs)
       
-      // Save
       if (activeId) {
         const convos = getConversations()
         const idx = convos.findIndex(c => c.id === activeId)
@@ -219,12 +254,69 @@ export default function HubPage({ profile }) {
     }
   }
 
+  const askFollowupVoice = async (questionText) => {
+    if (!questionText.trim() || loading) return
+    
+    setInput('')
+    const userMessage = { role: 'user', content: `🎙️ ${questionText.trim()}` }
+    
+    const lastAssistantMsg = messages.slice().reverse().find(m => m.role === 'assistant')
+    const contextText = lastAssistantMsg ? lastAssistantMsg.content : ''
+
+    setMessages(prev => [...prev, userMessage, { role: 'assistant', content: 'Loading audio response...' }])
+    setLoading(true)
+
+    try {
+      const headers = await getAuthHeaders()
+      const res = await fetch(`${API}/intel/ask-voice`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ 
+          question: questionText.trim(),
+          context: contextText
+        }),
+      })
+
+      if (!res.ok) throw new Error(`Server error ${res.status}`)
+      
+      const audioBlob = await res.blob()
+      const audioUrl = URL.createObjectURL(audioBlob)
+      
+      const audio = new Audio(audioUrl)
+      audio.play()
+
+      setMessages(prev => {
+        const newMsgs = [...prev]
+        newMsgs[newMsgs.length - 1] = { role: 'assistant', content: `🎙️ *Audio answer generated and playing...*` }
+        
+        // Save conversation
+        if (activeId) {
+          const convos = getConversations()
+          const idx = convos.findIndex(c => c.id === activeId)
+          if (idx !== -1) {
+            convos[idx].messages = newMsgs
+            saveConversations(convos)
+          }
+        }
+        return newMsgs;
+      })
+
+    } catch (e) {
+      setMessages(prev => {
+        const newMsgs = [...prev]
+        newMsgs[newMsgs.length - 1] = { role: 'assistant', content: `⚠️ Voice Error: ${e.message}. Please try again.` }
+        return newMsgs;
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleKeyDown = (e, isFollowup = false) => {
     if (e.key === 'Enter') {
       if (isFollowup) {
         askFollowup(input)
       } else {
-        // Default to navigator on enter if initially empty
         startTopic('navigator')
       }
     }
@@ -236,11 +328,22 @@ export default function HubPage({ profile }) {
     setInput('')
     setActiveId(null)
     setSearchParams({})
+    
+  }
+
+  // ── Resolve tool title ────────────────────────────────────────
+  const getToolTitle = () => {
+        if (tool === 'navigator') return '📰 News Navigator Briefing'
+    return '🧬 Story Arc Analysis'
   }
 
   return (
     <div className="hub-page">
-      <Navbar profile={profile} />
+      <Navbar 
+        profile={userProfile} 
+        onEditProfile={() => { setSetupMode('manual'); setShowSetup(true); }}
+        onEditProfileVoice={() => { setSetupMode('voice'); setShowSetup(true); }}
+      />
       
       <main className="hub-main">
         {messages.length === 0 ? (
@@ -251,6 +354,12 @@ export default function HubPage({ profile }) {
                 ET Intelligence Hub
               </div>
               <p className="hub-tagline">AI-Powered News Analysis & Story Arc Tracking</p>
+            </div>
+
+            <div className="hub-divider-row">
+              <div className="hub-divider-line" />
+              <span className="hub-divider-text">or explore a specific topic</span>
+              <div className="hub-divider-line" />
             </div>
             
             <section className="hub-input-section">
@@ -289,12 +398,10 @@ export default function HubPage({ profile }) {
         ) : (
           <section className="hub-results-section">
             <div className="hub-section-header">
-              <h2>
-                {tool === 'navigator' ? '📰 News Navigator Briefing' : '🧬 Story Arc Analysis'}
-              </h2>
+              <h2>{getToolTitle()}</h2>
               <button className="btn-hub-reset" onClick={resetHub}>← New Topic</button>
             </div>
-            
+
             <div className="hub-chat-history">
               {messages.map((msg, i) => (
                 <div key={i} className={`hub-chat-message ${msg.role}`}>
@@ -310,12 +417,16 @@ export default function HubPage({ profile }) {
                 </div>
               ))}
             </div>
-            
+
             {loading && (
               <div className="hub-loading-card">
                 <div className="hub-spinner"></div>
-                <div className="hub-loading-title">Agent is processing...</div>
-                <div className="hub-loading-sub">Collecting intel, generating insights.</div>
+                <div className="hub-loading-title">
+                  'Agent is processing...'
+                </div>
+                <div className="hub-loading-sub">
+                  'Collecting intel, generating insights.'
+                </div>
               </div>
             )}
             
@@ -331,13 +442,23 @@ export default function HubPage({ profile }) {
                     onKeyDown={e => handleKeyDown(e, true)}
                     placeholder="Ask anything about the report..."
                   />
-                  <button 
-                    className="btn-hub-ask" 
-                    onClick={() => askFollowup(input)}
-                    disabled={!input.trim()}
-                  >
-                    Ask
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button 
+                      className="btn-hub-ask" 
+                      onClick={() => askFollowup(input)}
+                      disabled={!input.trim()}
+                    >
+                      Ask
+                    </button>
+                    <button 
+                      className="btn-hub-ask" 
+                      style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                      onClick={() => askFollowupVoice(input)}
+                      disabled={!input.trim()}
+                    >
+                      🎙️ Ask (Voice)
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -346,6 +467,22 @@ export default function HubPage({ profile }) {
           </section>
         )}
       </main>
+
+      {showSetup && (
+        <ProfileSetup
+          initialMode={setupMode}
+          initialProfile={userProfile}
+          onComplete={handleProfileSetup}
+          onCancel={() => setShowSetup(false)}
+          getAuthHeaders={getAuthHeaders}
+          onVoiceComplete={(updatedProfile) => {
+            const newProf = { ...userProfile, ...updatedProfile, needs_setup: false };
+            localStorage.setItem('et_user_profile', JSON.stringify(newProf));
+            setShowSetup(false);
+            window.location.reload()
+          }}
+        />
+      )}
     </div>
   )
 }

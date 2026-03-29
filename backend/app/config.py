@@ -42,7 +42,7 @@ class Settings(BaseSettings):
 
     # ── News Settings ─────────────────────────────────────────
     NEWS_FETCH_INTERVAL_MINUTES: int = 15
-    MAX_ARTICLES_PER_FEED: int = 10
+    MAX_ARTICLES_PER_FEED: int = 15
 
     class Config:
         env_file = ".env"

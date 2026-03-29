@@ -51,3 +51,24 @@ class StoryArcResponse(BaseModel):
     contrarian_insights: ContrarianInsights
     what_to_watch: list[str] = []
     articles: list[ArticleInput] = []
+
+
+# ── Personalized Intelligence Agent ─────────────────────────────
+
+class ProfileRequest(BaseModel):
+    """Inline user profile for the demo (unauthenticated) endpoint."""
+    role: str = "student"
+    interests: list[str] = []
+    level: str = "beginner"
+
+
+class PersonalizedFeedResponse(BaseModel):
+    """Structured response from the Personalized Intel Agent."""
+    profile_used: dict = {}
+    queries_generated: list[str] = []
+    articles_evaluated: int = 0
+    articles_kept: int = 0
+    gaps_found: bool = False
+    briefing: dict = {}
+    followups: list[str] = []
+    articles: list[dict] = []

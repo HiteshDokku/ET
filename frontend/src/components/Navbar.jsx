@@ -1,7 +1,7 @@
 import { UserButton } from '@clerk/clerk-react'
 import { Link } from 'react-router-dom'
 
-export default function Navbar({ user, profile, sidebarOpen, onToggleSidebar, clerkAvailable }) {
+export default function Navbar({ user, profile, sidebarOpen, onToggleSidebar, clerkAvailable, onEditProfile, onEditProfileVoice }) {
   const role = profile?.role || 'reader'
   const displayName = user?.firstName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'User'
 
@@ -38,6 +38,16 @@ export default function Navbar({ user, profile, sidebarOpen, onToggleSidebar, cl
       )}
 
       <div className="nav-actions">
+        {onEditProfileVoice && (
+          <button className="btn-sidebar-toggle" onClick={onEditProfileVoice} style={{ marginRight: 8, whiteSpace: 'nowrap', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white' }}>
+            🎙️ Refine with AI
+          </button>
+        )}
+        {onEditProfile && (
+          <button className="btn-sidebar-toggle" onClick={onEditProfile} style={{ marginRight: 8, whiteSpace: 'nowrap' }}>
+            ⚙️ Preferences
+          </button>
+        )}
         <Link to="/dashboard" className="btn-sidebar-toggle" style={{ textDecoration: 'none', marginRight: 8, whiteSpace: 'nowrap' }}>
           🏠 Dashboard
         </Link>

@@ -37,6 +37,7 @@ export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [videoJob, setVideoJob] = useState(null)
   const [showSetup, setShowSetup] = useState(false)
+  const [setupMode, setSetupMode] = useState(null)
 
   const getAuthHeaders = useCallback(async () => {
     const headers = { 'Content-Type': 'application/json' }
@@ -60,7 +61,11 @@ export default function DashboardPage() {
         if (res.ok) {
           const data = await res.json()
           setProfile(data)
-          if (data.needs_setup) setShowSetup(true)
+          localStorage.setItem('et_user_profile', JSON.stringify(data))
+          if (data.REQUIRED_ONBOARDING || data.needs_setup) {
+            setSetupMode('voice')
+            setShowSetup(true)
+          }
         } else {
           // If 401 or 404, we must require setup or wait for token propagation
           if (res.status === 404) setShowSetup(true)
@@ -78,12 +83,15 @@ export default function DashboardPage() {
   const handleProfileSetup = async (setupData) => {
     try {
       const headers = await getAuthHeaders()
-      await fetch(`${API}/auth/profile/setup`, {
-        method: 'POST',
+      await fetch(`${API}/auth/profile`, {
+        method: 'PUT',
         headers,
         body: JSON.stringify(setupData),
       })
-      setProfile({ ...profile, ...setupData, needs_setup: false })
+      const updatedProfile = { ...profile, ...setupData, needs_setup: false }
+      setProfile(updatedProfile)
+      // Persist profile so HubPage can access it for personalized feed
+      localStorage.setItem('et_user_profile', JSON.stringify(updatedProfile))
       setShowSetup(false)
     } catch (e) {
       console.error('Profile setup failed:', e)
@@ -142,6 +150,8 @@ export default function DashboardPage() {
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         clerkAvailable={clerkAvailable}
+        onEditProfile={() => { setSetupMode('manual'); setShowSetup(true); }}
+        onEditProfileVoice={() => { setSetupMode('voice'); setShowSetup(true); }}
       />
 
       <div className="dashboard-body">
@@ -150,6 +160,7 @@ export default function DashboardPage() {
             profile={profile}
             getAuthHeaders={getAuthHeaders}
             onVideoGenerate={handleVideoGenerate}
+            onProfileSetupRequired={() => { setSetupMode('voice'); setShowSetup(true); }}
           />
         </div>
 
@@ -169,7 +180,17 @@ export default function DashboardPage() {
 
       {showSetup && (
         <ProfileSetup
+          initialMode={setupMode}
+          initialProfile={profile}
           onComplete={handleProfileSetup}
+          onCancel={() => setShowSetup(false)}
+          getAuthHeaders={getAuthHeaders}
+          onVoiceComplete={(updatedProfile) => {
+            const newProf = { ...profile, ...updatedProfile, needs_setup: false };
+            setProfile(newProf);
+            localStorage.setItem('et_user_profile', JSON.stringify(newProf));
+            setShowSetup(false);
+          }}
         />
       )}
     </div>

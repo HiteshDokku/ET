@@ -45,6 +45,11 @@ services:
     volumes:
       - output_data:/app/output
       - tmp_data:/app/tmp
+    shm_size: '2gb'
+    deploy:
+      resources:
+        limits:
+          memory: 4G
     depends_on:
       redis:
         condition: service_healthy
@@ -63,6 +68,11 @@ services:
     volumes:
       - output_data:/app/output
       - tmp_data:/app/tmp
+    shm_size: '2gb'
+    deploy:
+      resources:
+        limits:
+          memory: 3G
     depends_on:
       redis:
         condition: service_healthy
@@ -70,12 +80,17 @@ services:
   # ── Celery Worker — News Fetching ───────────────────────────
   news-worker:
     build: ./backend
-    command: celery -A app.celery_app worker --loglevel=info --concurrency=1 -Q news
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=1 -Q news --heartbeat-interval 10
     env_file:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379/0
       - DATABASE_URL=postgresql+asyncpg://etuser:etpassword@postgres:5432/et_newsroom
+    shm_size: '2gb'
+    deploy:
+      resources:
+        limits:
+          memory: 3G
     depends_on:
       redis:
         condition: service_healthy

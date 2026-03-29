@@ -57,3 +57,19 @@ async def ask_llm(system_prompt: str, user_prompt: str) -> dict | list:
 async def ask_llm_fast(system_prompt: str, user_prompt: str) -> dict | list:
     """Fast worker model (llama-3.3-70b) — for query generation, validation, gap checks."""
     return await _call(MODEL_FAST, system_prompt, user_prompt, temperature=0.5)
+
+
+async def transcribe_audio(file_bytes: bytes, filename: str) -> str:
+    """Use Groq Whisper to transcribe audio input."""
+    client = _get_client()
+    try:
+        response = await client.audio.transcriptions.create(
+            file=(filename, file_bytes),
+            model="whisper-large-v3",
+            response_format="json"
+        )
+        return response.text
+    except Exception as e:
+        import logging
+        logging.error(f"Transcription failed: {str(e)}")
+        raise

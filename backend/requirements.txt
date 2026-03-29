@@ -31,7 +31,6 @@ feedparser==6.0.11
 python-dateutil==2.9.0
 
 # ML (news personalization)
-scikit-learn==1.4.2
 numpy==1.26.4
 
 # LLM (Groq — ALL AI tasks)

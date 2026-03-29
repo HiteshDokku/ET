@@ -3,20 +3,42 @@ import ArticleCard from './ArticleCard'
 
 const API = '/api'
 
-export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate }) {
+/* Agent pipeline steps shown during loading */
+const AGENT_STEPS = [
+  { icon: '🔍', text: 'Generating search queries from your interests...' },
+  { icon: '📡', text: 'Scraping Google News RSS feeds...' },
+  { icon: '🧠', text: 'Evaluating article relevance with AI...' },
+  { icon: '🔄', text: 'Analyzing coverage gaps across interests...' },
+  { icon: '✍️', text: 'Personalizing insights for your role...' },
+]
+
+export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onProfileSetupRequired }) {
   const [articles, setArticles] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [agentStep, setAgentStep] = useState(0)
+  const [elapsed, setElapsed] = useState(null)
 
-  const fetchFeed = async () => {
+  const fetchFeed = async (forceRefresh = false) => {
     setLoading(true)
     setError(null)
+    setAgentStep(0)
     try {
       const headers = await getAuthHeaders()
-      const res = await fetch(`${API}/news/feed`, { headers })
-      if (!res.ok) throw new Error(`Server error: ${res.status}`)
+      const url = forceRefresh
+        ? `${API}/news/feed?force_refresh=true`
+        : `${API}/news/feed`
+      const res = await fetch(url, { headers })
+      if (!res.ok) {
+        if (res.status === 400 && onProfileSetupRequired) {
+          onProfileSetupRequired();
+          return;
+        }
+        throw new Error(`Server error: ${res.status}`)
+      }
       const data = await res.json()
       setArticles(data.articles || [])
+      setElapsed(data.elapsed_seconds || null)
     } catch (e) {
       console.error('Feed error:', e)
       setError(e.message)
@@ -29,16 +51,55 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate }) {
     if (profile) fetchFeed() 
   }, [profile?.role])
 
+  // Animate through agent steps during loading
+  useEffect(() => {
+    if (!loading) return
+    const interval = setInterval(() => {
+      setAgentStep(prev => (prev + 1) % AGENT_STEPS.length)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [loading])
+
   if (loading) {
     return (
       <>
         <div className="feed-header">
           <div>
             <h1 className="feed-title">Your Briefing</h1>
-            <div className="feed-count">Loading personalized articles...</div>
+            <div className="feed-count">Agent is curating your newsroom...</div>
           </div>
         </div>
-        {[1, 2, 3].map(i => (
+
+        {/* ── Agentic Loading UI ─────────────────────────── */}
+        <div className="feed-agent-loading">
+          <div className="feed-agent-loading__spinner" />
+          <div className="feed-agent-loading__step">
+            <span className="feed-agent-loading__icon">
+              {AGENT_STEPS[agentStep].icon}
+            </span>
+            <span className="feed-agent-loading__text">
+              {AGENT_STEPS[agentStep].text}
+            </span>
+          </div>
+          <div className="feed-agent-loading__pipeline">
+            {AGENT_STEPS.map((step, i) => (
+              <div
+                key={i}
+                className={`feed-agent-loading__dot ${i <= agentStep ? 'active' : ''} ${i === agentStep ? 'current' : ''}`}
+                title={step.text}
+              />
+            ))}
+          </div>
+          {profile?.interests && (
+            <div className="feed-agent-loading__interests">
+              {profile.interests.map((interest, i) => (
+                <span key={i} className="feed-agent-loading__chip">{interest}</span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {[1, 2, 3, 4].map(i => (
           <div key={i} className="skeleton-card">
             <div className="skeleton skeleton--sm" />
             <div className="skeleton skeleton--lg" />
@@ -72,6 +133,19 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate }) {
     )
   }
 
+  // Check if feed was agent-curated
+  const isAgentCurated = articles.length > 0 && articles[0]?.agent_curated
+
+  // Compute interest distribution
+  const interestCounts = {}
+  articles.forEach(a => {
+    if (a.matched_interest) {
+      interestCounts[a.matched_interest] = (interestCounts[a.matched_interest] || 0) + 1
+    }
+  })
+  const matchedInterests = Object.keys(interestCounts)
+  const hasInterestData = matchedInterests.length > 0
+
   return (
     <>
       <div className="feed-header">
@@ -79,12 +153,39 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate }) {
           <h1 className="feed-title">Your Briefing</h1>
           <div className="feed-count">
             {articles.length} articles personalized for {profile?.role || 'you'}
+            {isAgentCurated && ' · Agent curated'}
+            {elapsed && ` · ${elapsed}s`}
           </div>
         </div>
-        <button className="btn-refresh" onClick={fetchFeed}>
+        <button className="btn-refresh" onClick={() => fetchFeed(true)}>
           ↻ Refresh
         </button>
       </div>
+
+      {/* ── Interest Coverage Banner ─────────────────────── */}
+      {hasInterestData && (
+        <div className="feed-agent-banner">
+          <div className="feed-agent-banner__header">
+            <span className="feed-agent-dot" />
+            <span className="feed-agent-label">
+              {isAgentCurated ? 'Intelligence Agent' : 'Personalized Feed'}
+            </span>
+            <span className="feed-agent-sublabel">
+              {isAgentCurated
+                ? 'Real-time articles curated from your profile'
+                : 'Coverage across all your interests'}
+            </span>
+          </div>
+          <div className="feed-agent-banner__interests">
+            {matchedInterests.map((interest, i) => (
+              <span key={i} className="feed-interest-chip">
+                🎯 {interest}
+                <span className="feed-interest-count">{interestCounts[interest]}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {articles.length === 0 ? (
         <div style={{
@@ -93,9 +194,9 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate }) {
           color: 'var(--text-secondary)',
         }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🗞️</div>
-          <div>No articles yet — the system is crunching the latest news.</div>
+          <div>No articles yet — the agent couldn't find relevant news.</div>
           <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 8 }}>
-            Articles refresh every 15 minutes.
+            Try refreshing or updating your interests in the profile.
           </div>
         </div>
       ) : (

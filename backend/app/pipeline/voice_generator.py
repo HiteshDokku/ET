@@ -197,3 +197,45 @@ def _validate_voice(result: VoiceResult):
         f"Voice validated: {result.total_duration:.1f}s total, "
         f"{result.average_wpm:.0f} avg WPM, {len(result.segments)} segments"
     )
+
+
+def generate_quick_audio(text: str, voice_id: str = None) -> bytes:
+    """Generate TTS audio quickly without saving to disk."""
+    client = ElevenLabs(api_key=settings.elevenlabs_api_key)
+    vid = voice_id or _get_available_voice_id(client)
+    
+    clean_text = text.replace("*", "").replace('"', '').replace('\n', ' ')
+    
+    try:
+        audio_generator = client.text_to_speech.convert(
+            voice_id=vid,
+            text=clean_text,
+            model_id=ELEVENLABS_MODEL,
+            output_format="mp3_44100_128",
+        )
+        audio_bytes = b"".join(chunk for chunk in audio_generator)
+        return audio_bytes
+    except Exception as e:
+        logger.warning(f"Quick ElevenLabs TTS failed ({e}), falling back to edge-tts...")
+        import subprocess
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+            tmp_path = tmp.name
+        
+        cmd = [
+            "edge-tts",
+            "--voice", "en-US-ChristopherNeural",
+            "--text", clean_text,
+            "--write-media", tmp_path
+        ]
+        result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+        if result.returncode != 0:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+            raise Exception(f"Quick edge-tts fallback failed: {result.stderr}")
+            
+        with open(tmp_path, "rb") as f:
+            audio_bytes = f.read()
+            
+        os.remove(tmp_path)
+        return audio_bytes
