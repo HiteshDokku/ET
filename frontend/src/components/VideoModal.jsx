@@ -41,7 +41,6 @@ export default function VideoModal({ job, onClose, language = 'English' }) {
   }, [job.job_id])
 
   useEffect(() => {
-    // If the job was served from cache, it's already completed
     if (job.status === 'completed') {
       setStatus({ ...job, status: 'completed', progress: 1 })
       return
@@ -59,13 +58,17 @@ export default function VideoModal({ job, onClose, language = 'English' }) {
   const videoUrl = status?.video_url || job?.video_url || `/api/video/download/${job.job_id}`
 
   return (
-    <div className="video-modal-overlay" onClick={onClose}>
-      <div className="video-modal" onClick={e => e.stopPropagation()}>
-        <div className="video-modal__header">
-          <h2 className="video-modal__title">
-            {isComplete ? t('video_ready') : isFailed ? t('video_failed') : t('video_generating')}
+    <div className="video-modal-overlay" onClick={onClose} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400
+    }}>
+      <div className="video-modal" onClick={e => e.stopPropagation()} style={{
+        background: 'var(--bg-secondary)', border: '1px solid var(--border-strong)', padding: 32, width: '90%', maxWidth: 500, fontFamily: 'var(--font-mono)'
+      }}>
+        <div className="video-modal__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
+          <h2 className="video-modal__title" style={{ fontFamily: 'var(--font-mono)', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0, color: 'var(--text)' }}>
+            [ {isComplete ? t('video_ready') : isFailed ? t('video_failed') : "SYSTEM_RENDER"} ]
           </h2>
-          <button className="video-modal__close" onClick={onClose}>✕</button>
+          <button className="video-modal__close" onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}>[ X ]</button>
         </div>
 
         <div className="video-modal__body">
@@ -76,62 +79,51 @@ export default function VideoModal({ job, onClose, language = 'English' }) {
                 controls
                 autoPlay
                 playsInline
-                style={{ aspectRatio: '9/16', maxHeight: 400 }}
+                style={{ aspectRatio: '9/16', maxHeight: 400, width: '100%', objectFit: 'contain', border: '1px solid var(--border)' }}
               />
-              <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
                 <a
                   href={videoUrl}
                   download
                   className="btn-primary"
-                  style={{ textAlign: 'center', textDecoration: 'none' }}
+                  style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, fontFamily: 'var(--font-mono)', fontSize: 13, textTransform: 'uppercase', borderRadius: 0 }}
                 >
-                  {t('video_download')}
+                  [ {t('video_download')} ]
                 </a>
-                <button
-                  className="btn-refresh"
-                  style={{ flex: 1 }}
-                  onClick={onClose}
-                >
-                  {t('video_close')}
-                </button>
               </div>
             </>
           )}
 
           {isFailed && (
-            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
-              <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
-              <div>{status?.error || t('video_failed')}</div>
-              <button className="btn-refresh" onClick={onClose} style={{ marginTop: 20 }}>
-                {t('video_close')}
-              </button>
+            <div style={{ textAlign: 'center', padding: 40, border: '1px solid var(--et-red)', background: 'var(--et-red-light)' }}>
+              <div style={{ fontSize: 24, marginBottom: 16, color: 'var(--et-red)' }}>[ ERR ]</div>
+              <div style={{ fontSize: 12, textTransform: 'uppercase', color: 'var(--text)' }}>{status?.error || t('video_failed')}</div>
             </div>
           )}
 
           {!isComplete && !isFailed && (
             <>
-              <div className="progress-bar">
-                <div className="progress-bar__fill" style={{ width: `${progress}%` }} />
+              <div className="progress-bar" style={{ height: 2, background: 'var(--border-strong)', marginBottom: 12, position: 'relative' }}>
+                <div className="progress-bar__fill" style={{ width: `${progress}%`, height: '100%', background: 'var(--et-red)', transition: 'width 0.5s ease' }} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 32, textTransform: 'uppercase' }}>
                 <span>{status?.message || t('video_init')}</span>
-                <span>{Math.round(progress)}%</span>
+                <span>[{Math.round(progress)}%]</span>
               </div>
 
-              <div className="pipeline-stages">
+              <div className="pipeline-stages" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {STAGE_ORDER.map((stage, idx) => {
                   let cls = ''
                   if (idx < currentStageIdx) cls = 'completed'
                   else if (idx === currentStageIdx) cls = 'active'
 
                   return (
-                    <div key={stage} className={`stage ${cls}`}>
-                      <div className="stage__icon">
-                        {cls === 'completed' ? '✓' :
-                          cls === 'active' ? <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> :
-                            '○'}
+                    <div key={stage} className={`stage ${cls}`} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: cls === 'active' ? 'var(--et-red)' : cls === 'completed' ? 'var(--text-secondary)' : 'var(--text-tertiary)', textTransform: 'uppercase' }}>
+                      <div className="stage__icon" style={{ width: 16 }}>
+                        {cls === 'completed' ? '[+]' :
+                          cls === 'active' ? '[*]' : '[-]'}
                       </div>
-                      {STAGE_LABELS[stage]}
+                      <span style={{ fontWeight: cls === 'active' ? 700 : 400 }}>{STAGE_LABELS[stage]}</span>
                     </div>
                   )
                 })}

@@ -274,3 +274,63 @@ Return strict JSON:
         "history": history,
         "extracted": extracted
     }
+
+@router.post("/voice-to-agent")
+async def voice_to_agent(
+    audio: UploadFile = File(...),
+    clerk_id: str = Depends(get_clerk_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Refine user interests via voice command to the agent."""
+    user = await get_or_create_user(clerk_id, db)
+
+    # 1. Transcribe audio
+    try:
+        file_bytes = await audio.read()
+        transcript = await transcribe_audio(file_bytes, audio.filename or "audio.webm")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
+
+    if not transcript.strip():
+        raise HTTPException(status_code=400, detail="Voice audio was empty or unintelligible.")
+
+    # 2. Extract new preferences
+    system_prompt = f"""You are the ET Intelligence Agent adjusting a user's dashboard feed.
+The user speaks to you to refine what they want to read about.
+Current Role: {user.role}
+Current Level: {user.level}
+Current Interests: {user.interests}
+
+The text will be a transcription of the user's voice command.
+Analyze the command and modify the 'interests' array appropriately (add, remove, or replace).
+Also provide a short 'confirmation_message' acknowledging their command in a professional assistant tone (e.g. "Got it, I'll prioritize stories about AI startups.").
+Return strict JSON:
+{{"interests": ["list", "of", "strings"], "confirmation_message": "string"}}"""
+    
+    try:
+        extracted = await ask_llm_fast(system_prompt, f"Transcript:\\n{transcript}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"LLM extraction failed: {str(e)}")
+
+    new_interests = extracted.get("interests", user.interests)
+    if isinstance(new_interests, str):
+        new_interests = [new_interests]
+        
+    extracted["interests"] = new_interests
+    
+    # 3. Update Profile
+    user.interests = new_interests
+    await db.commit()
+    cache_user_profile(user)
+    
+    # Clear cache so orchestrator generates a fresh feed
+    if redis_client:
+        redis_client.delete(f"feed:{user.id}")
+
+    return {
+        "message": "Agent feed updated",
+        "user_id": user.id,
+        "transcript": transcript,
+        "extracted": extracted,
+        "trigger_scrape": True
+    }

@@ -71,14 +71,13 @@ async def _call(model: str, system_prompt: str, user_prompt: str, temperature: f
                 f"type={type(e).__name__} | detail={error_str}"
             )
             if "429" in error_str or "rate_limit" in error_str.lower():
-                wait = (attempt + 1) * 15
-                logger.warning(f"Rate limited (attempt {attempt+1}/{MAX_ATTEMPTS}), waiting {wait}s...")
-                await asyncio.sleep(wait)
+                logger.warning(f"Rate limited. Moving forward without retrying...")
+                raise e
             elif attempt < MAX_ATTEMPTS - 1:
                 # Non-rate-limit error — still retry once
                 await asyncio.sleep(2)
             else:
-                raise
+                raise e
     raise last_error
 
 
@@ -119,8 +118,11 @@ async def transcribe_audio(file_bytes: bytes, filename: str) -> str:
                 f"GROQ_API_ERROR | transcription | attempt={attempt+1}/{MAX_ATTEMPTS} | "
                 f"type={type(e).__name__} | detail={str(e)}"
             )
-            if attempt < MAX_ATTEMPTS - 1:
+            if "429" in str(e) or "rate_limit" in str(e).lower():
+                logger.warning(f"Rate limited. Moving forward without retrying...")
+                raise e
+            elif attempt < MAX_ATTEMPTS - 1:
                 await asyncio.sleep(2)
             else:
-                raise
+                raise e
     raise last_error

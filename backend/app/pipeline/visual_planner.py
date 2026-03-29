@@ -148,6 +148,9 @@ REQUIREMENTS:
         except Exception as e:
             last_error = e
             logger.warning(f"Visual plan attempt {attempt+1}/{MAX_ATTEMPTS} failed: {e}")
+            if "429" in str(e) or "rate_limit" in str(e).lower():
+                logger.warning("Rate limited. Moving forward without retrying...")
+                raise e
             if attempt < MAX_ATTEMPTS - 1:
                 time.sleep(2)
     else:

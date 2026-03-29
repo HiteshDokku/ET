@@ -466,11 +466,11 @@ export default function HubPage({ profile }) {
                     </button>
                     <button 
                       className="btn-hub-ask" 
-                      style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                      style={{ borderColor: 'var(--et-red)', color: 'var(--et-red)', background: 'transparent' }}
                       onClick={() => askFollowupVoice(input)}
                       disabled={!input.trim()}
                     >
-                      {t('hub_ask_voice')}
+                      [ {t('hub_ask_voice')} ]
                     </button>
                   </div>
                 </div>

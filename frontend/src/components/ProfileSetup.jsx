@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 
 const ROLES = [
-  { id: 'student', icon: '🎓', label: 'Student' },
-  { id: 'investor', icon: '💼', label: 'Investor' },
-  { id: 'founder', icon: '🚀', label: 'Founder' },
+  { id: 'student', icon: '—', label: 'Student' },
+  { id: 'investor', icon: '—', label: 'Investor' },
+  { id: 'founder', icon: '—', label: 'Founder' },
 ]
 
 const LEVELS = ['beginner', 'intermediate', 'advanced']
@@ -17,24 +17,22 @@ const INTEREST_SUGGESTIONS = [
 
 const LANGUAGES = [
   { id: 'English', label: 'English' },
-  { id: 'Hindi', label: 'हिंदी' },
-  { id: 'Marathi', label: 'मराठी' },
-  { id: 'Telugu', label: 'తెలుగు' },
-  { id: 'Kannada', label: 'ಕನ್ನಡ' },
+  { id: 'Hindi', label: 'Hindi' },
+  { id: 'Marathi', label: 'Marathi' },
+  { id: 'Telugu', label: 'Telugu' },
+  { id: 'Kannada', label: 'Kannada' },
 ]
 
 export default function ProfileSetup({ initialProfile, initialMode, onComplete, onCancel, getAuthHeaders, onVoiceComplete }) {
   const isUpdate = (initialProfile?.interests && initialProfile.interests.length > 0)
   const [mode, setMode] = useState(initialMode || (isUpdate ? 'manual' : 'landing'))
 
-  // Manual state
   const [role, setRole] = useState(initialProfile?.role || 'student')
   const [interests, setInterests] = useState(initialProfile?.interests || [])
   const [level, setLevel] = useState(initialProfile?.level || 'beginner')
   const [preferredLanguage, setPreferredLanguage] = useState(initialProfile?.preferred_language || 'English')
   const [saving, setSaving] = useState(false)
 
-  // Voice AI Interview state
   const [isRecording, setIsRecording] = useState(false)
   const [processingVoice, setProcessingVoice] = useState(false)
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
@@ -46,7 +44,6 @@ export default function ProfileSetup({ initialProfile, initialMode, onComplete, 
   const chunksRef = useRef([])
   const audioRef = useRef(null)
 
-  // Cleanup audio on unmount
   useEffect(() => {
     return () => {
       if (audioRef.current) {
@@ -59,7 +56,6 @@ export default function ProfileSetup({ initialProfile, initialMode, onComplete, 
       }
     }
   }, [isRecording])
-
 
   const toggleInterest = (interest) => {
     setInterests(prev =>
@@ -81,7 +77,7 @@ export default function ProfileSetup({ initialProfile, initialMode, onComplete, 
     try {
       const headers = await getAuthHeaders()
       const fetchHeaders = { ...headers }
-      delete fetchHeaders['Content-Type'] // Let browser set multipart boundary
+      delete fetchHeaders['Content-Type']
 
       const formData = new FormData()
       if (audioBlob) {
@@ -105,7 +101,6 @@ export default function ProfileSetup({ initialProfile, initialMode, onComplete, 
       if (res.ok) {
         const data = await res.json()
 
-        // Sync local explicit state context for next turns
         if (data.extracted) {
           if (data.extracted.role && data.extracted.role !== "null") setRole(data.extracted.role)
           if (data.extracted.level && data.extracted.level !== "null") setLevel(data.extracted.level)
@@ -117,7 +112,6 @@ export default function ProfileSetup({ initialProfile, initialMode, onComplete, 
           return
         }
 
-        // It is CONTINUE.
         setInterviewHistory(data.history || [])
         setAiQuestion(data.question || '')
 
@@ -127,7 +121,7 @@ export default function ProfileSetup({ initialProfile, initialMode, onComplete, 
           audioRef.current = audio
           audio.onended = () => {
             setIsPlayingAudio(false)
-            startRecording() // Autostart the microphone immediately after the AI stops talking
+            startRecording()
           }
           const playPromise = audio.play()
           if (playPromise !== undefined) {
@@ -138,7 +132,6 @@ export default function ProfileSetup({ initialProfile, initialMode, onComplete, 
             })
           }
         } else {
-          // Fallback if no audio was generated for some reason
           startRecording()
         }
 
@@ -166,9 +159,7 @@ export default function ProfileSetup({ initialProfile, initialMode, onComplete, 
 
       mediaRecorderRef.current.onstop = async () => {
         const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        // Clean up the stream tracks
         stream.getTracks().forEach(t => t.stop())
-        // Immediately trigger next turn
         sendInterviewTurn(audioBlob)
       }
 
@@ -187,29 +178,42 @@ export default function ProfileSetup({ initialProfile, initialMode, onComplete, 
     }
   }
 
+  // Common input/select style simulating printed form line
+  const formStyle = {
+    width: '100%',
+    padding: '8px 0',
+    background: 'transparent',
+    border: 'none',
+    borderBottom: '1px solid var(--border-strong)',
+    borderRadius: 0,
+    color: 'var(--text)',
+    fontFamily: 'var(--font-mono)',
+    fontSize: '13px',
+    outline: 'none',
+    marginBottom: '24px'
+  }
+
   return (
     <div className="profile-setup-overlay">
-      <div className="profile-setup">
-        <div className="profile-setup__title">Welcome to ET</div>
-        <div className="profile-setup__sub">
-          Tell us about yourself to personalize your newsroom
+      <div className="profile-setup" style={{ border: '1px solid var(--border)', background: 'var(--bg)', borderRadius: 0, boxShadow: 'none' }}>
+        <div className="profile-setup__title" style={{ fontFamily: 'var(--font-headline)', color: 'var(--text)', textTransform: 'uppercase' }}>Configuration</div>
+        <div className="profile-setup__sub" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Please set your editorial preferences
         </div>
 
         {mode === 'landing' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
             <button 
-              className="btn-primary" 
               onClick={() => setMode('manual')}
-              style={{ padding: '16px', fontSize: '18px' }}
+              style={{ padding: '16px', fontSize: '14px', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer' }}
             >
-              📝 Fast Manual Setup
+              [ MANUAL INPUT ]
             </button>
             <button 
-              className="btn-primary" 
               onClick={() => setMode('voice')}
-              style={{ padding: '16px', fontSize: '18px', background: 'linear-gradient(135deg, #10b981, #059669)' }}
+              style={{ padding: '16px', fontSize: '14px', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', background: 'var(--et-red)', border: '1px solid var(--et-red)', color: '#fff', cursor: 'pointer' }}
             >
-              🎙️ Talk to AI Assistant
+              [ VOICE INTERFACE ]
             </button>
           </div>
         )}
@@ -218,174 +222,153 @@ export default function ProfileSetup({ initialProfile, initialMode, onComplete, 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 32, gap: 24 }}>
             {!interviewInitialized ? (
               <div style={{ textAlign: 'center' }}>
-                <div style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
-                  Ensure your audio is unmuted. The AI will speak first and guide you through setting up your profile.
+                <div style={{ color: 'var(--text-secondary)', marginBottom: 24, fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                  Voice agent initialized. Please enable microphone.
                 </div>
                 <button 
-                  className="btn-primary" 
                   onClick={() => {
                     setInterviewInitialized(true)
                     sendInterviewTurn(null)
                   }}
-                  style={{ background: 'linear-gradient(135deg, #10b981, #059669)', fontSize: "18px", padding: '16px' }}
+                  style={{ background: 'var(--et-red)', color: 'white', border: 'none', fontSize: "14px", fontFamily: 'var(--font-mono)', padding: '16px 24px', cursor: 'pointer', textTransform: 'uppercase' }}
                 >
-                  ▶️ Start Interview
+                  [ INITIATE CONNECTION ]
                 </button>
               </div>
             ) : !processingVoice ? (
               <>
                 {isPlayingAudio ? (
                   <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    <div style={{ fontSize: 24, marginBottom: 8 }}>🔊</div>
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>AI is speaking...</div>
-                    <div style={{ fontSize: 14, fontStyle: 'italic', marginTop: 12 }}>"{aiQuestion}"</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-mono)', marginBottom: 12 }}>SYS: TRANSMITTING</div>
+                    <div style={{ fontSize: 13, fontStyle: 'italic', fontFamily: 'var(--font-headline)' }}>"{aiQuestion}"</div>
                   </div>
                 ) : (
                   <>
                     <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                      <div style={{ fontSize: 14, fontStyle: 'italic', marginBottom: 12 }}>"{aiQuestion}"</div>
-                      <div>It is your turn to speak.</div>
+                      <div style={{ fontSize: 13, fontStyle: 'italic', fontFamily: 'var(--font-headline)', marginBottom: 12 }}>"{aiQuestion}"</div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>AWAITING RESPONSE...</div>
                     </div>
                     <button 
                       onClick={isRecording ? stopRecording : startRecording}
                       style={{
-                        width: '80px', height: '80px', borderRadius: '50%',
-                        background: isRecording ? '#ef4444' : 'linear-gradient(135deg, #10b981, #059669)',
-                        border: 'none', color: 'white', fontSize: '32px', cursor: 'pointer',
-                        boxShadow: isRecording ? '0 0 20px #ef4444' : '0 10px 15px -3px rgba(16,185,129,0.3)',
-                        transition: 'all 0.2s ease',
+                        width: '80px', height: '80px', borderRadius: '0',
+                        background: isRecording ? 'var(--et-red)' : 'transparent',
+                        border: '1px solid var(--border)', color: 'var(--text)', fontSize: '24px', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', alignContent: 'center', justifyContent: 'center'
                       }}
                     >
-                      {isRecording ? '⏹️' : '🎙️'}
+                      {isRecording ? '⏹' : 'REC'}
                     </button>
-                    <div style={{ fontWeight: 600, color: isRecording ? '#ef4444' : 'var(--text-primary)' }}>
-                      {isRecording ? 'Listening (Tap to Stop)...' : 'Tap to Record'}
-                    </div>
                   </>
                 )}
               </>
             ) : (
-              <div style={{ textAlign: 'center' }}>
-                <div className="spinner" style={{ margin: '0 auto 16px' }} />
-                <div>AI is thinking...</div>
+              <div style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                <div>PROCESSING SIGNAL...</div>
               </div>
             )}
             
-            <div style={{ background: 'var(--bg-secondary)', padding: '12px 24px', borderRadius: 8, fontSize: 12, marginTop: 12, display: 'flex', gap: 16 }}>
-              <div><strong>Role:</strong> {role}</div>
-              <div><strong>Level:</strong> {level}</div>
-              <div><strong>Interests:</strong> {interests.length} set</div>
+            <div style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '12px 24px', fontSize: 11, marginTop: 12, display: 'flex', gap: 16, fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }}>
+              <div>ROLE: {role}</div>
+              <div>LEVEL: {level}</div>
+              <div>TAGS: {interests.length}</div>
             </div>
 
             <button 
-              className="btn-secondary" 
               onClick={() => {
                  if (audioRef.current) audioRef.current.pause()
                  stopRecording()
                  setMode('manual')
               }}
-              style={{ marginTop: 16, border: 'none', background: 'transparent' }}
+              style={{ marginTop: 16, border: 'none', background: 'transparent', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: 11, cursor: 'pointer', textTransform: 'uppercase' }}
               disabled={processingVoice}
             >
-              Switch to Manual Setup
+              [ ABORT VOICE / MANUAL EDIT ]
             </button>
           </div>
         )}
 
         {mode === 'manual' && (
           <>
-            {/* Language Selection */}
             <div className="form-group" style={{ marginTop: 16 }}>
-              <label className="form-label">Preferred Language</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 8 }}>
+              <label className="form-label" style={{ fontFamily: 'var(--font-mono)' }}>LANGUAGE EDITION</label>
+              <select style={formStyle} value={preferredLanguage} onChange={e => setPreferredLanguage(e.target.value)}>
                 {LANGUAGES.map(lang => (
-                  <button
-                    key={lang.id}
-                    className={`role-card ${preferredLanguage === lang.id ? 'selected' : ''}`}
-                    onClick={() => setPreferredLanguage(lang.id)}
-                    style={{ padding: '8px', minHeight: 'auto', flexDirection: 'row', justifyContent: 'center' }}
-                  >
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{lang.label}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Role Selection */}
-            <div className="form-group" style={{ marginTop: 16 }}>
-              <label className="form-label">I am a</label>
-              <div className="role-cards">
-                {ROLES.map(r => (
-                  <button
-                    key={r.id}
-                    className={`role-card ${role === r.id ? 'selected' : ''}`}
-                    onClick={() => setRole(r.id)}
-                  >
-                    <div className="role-card__icon">{r.icon}</div>
-                    <div className="role-card__label">{r.label}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Interests */}
-            <div className="form-group">
-              <label className="form-label">I'm interested in (select 3+)</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {INTEREST_SUGGESTIONS.map(interest => (
-                  <button
-                    key={interest}
-                    className={`badge ${interests.includes(interest) ? 'badge--relevance' : 'badge--source'}`}
-                    style={{ cursor: 'pointer', padding: '6px 12px', fontSize: 12 }}
-                    onClick={() => toggleInterest(interest)}
-                  >
-                    {interest}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Experience Level */}
-            <div className="form-group">
-              <label className="form-label">My experience level</label>
-              <select
-                className="form-select"
-                value={level}
-                onChange={e => setLevel(e.target.value)}
-              >
-                {LEVELS.map(l => (
-                  <option key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</option>
+                  <option key={lang.id} value={lang.id} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {lang.id} - {lang.label}
+                  </option>
                 ))}
               </select>
             </div>
 
-            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+            <div className="form-group" style={{ marginTop: 16 }}>
+              <label className="form-label" style={{ fontFamily: 'var(--font-mono)' }}>PROFILE CLASS</label>
+              <select style={formStyle} value={role} onChange={e => setRole(e.target.value)}>
+                {ROLES.map(r => (
+                  <option key={r.id} value={r.id} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {r.label.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginTop: 16 }}>
+              <label className="form-label" style={{ fontFamily: 'var(--font-mono)' }}>EXPERIENCE LEVEL</label>
+              <select style={formStyle} value={level} onChange={e => setLevel(e.target.value)}>
+                {LEVELS.map(l => (
+                  <option key={l} value={l} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {l.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" style={{ fontFamily: 'var(--font-mono)' }}>TRACKED ENTITIES (MIN 3)</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                {INTEREST_SUGGESTIONS.map(interest => {
+                  const isSelected = interests.includes(interest);
+                  return (
+                    <button
+                      key={interest}
+                      style={{ 
+                        cursor: 'pointer', 
+                        padding: '6px 12px', 
+                        fontSize: 11, 
+                        fontFamily: 'var(--font-mono)', 
+                        textTransform: 'uppercase',
+                        background: isSelected ? 'var(--et-red)' : 'transparent',
+                        color: isSelected ? '#fff' : 'var(--text-secondary)',
+                        border: `1px solid ${isSelected ? 'var(--et-red)' : 'var(--border)'}`,
+                        borderRadius: 0
+                      }}
+                      onClick={() => toggleInterest(interest)}
+                    >
+                      {interest}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 32 }}>
               {isUpdate && onCancel && (
                 <button
-                  className="btn-secondary"
                   onClick={onCancel}
                   disabled={saving}
-                  style={{ flex: 1, padding: '12px', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}
+                  style={{ flex: 1, padding: '12px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', fontSize: 13 }}
                 >
-                  Cancel
+                  [ CANCEL ]
                 </button>
               )}
               <button
-                className="btn-primary"
                 onClick={handleSave}
                 disabled={interests.length < 3 || saving}
-                style={{ flex: 2 }}
+                style={{ flex: 2, padding: '12px', background: 'var(--text)', color: 'var(--bg)', border: 'none', cursor: interests.length < 3 ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', fontSize: 13, opacity: interests.length < 3 ? 0.5 : 1 }}
               >
-                {saving ? (isUpdate ? 'Saving...' : 'Setting up...') : (isUpdate ? 'Save Changes' : `Start Reading (${interests.length} interests)`)}
+                [ {saving ? 'CONFIRMING...' : 'SAVE CONFIGURATION'} ]
               </button>
             </div>
-
-            {interests.length < 3 && (
-              <div className="form-hint" style={{ textAlign: 'center', marginTop: 8 }}>
-                Select at least 3 interests to continue
-              </div>
-            )}
           </>
         )}
       </div>

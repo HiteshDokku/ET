@@ -110,7 +110,7 @@ export default function ArticleCard({ article, onVideoGenerate, language = 'Engl
           {/* Dynamic insight rendering — handles all role-based keys */}
           {Object.entries(personalized).map(([key, value]) => {
             if (!value || key === 'headline' || key === 'error' || key === 'raw_output') return null
-            
+
             // Map keys to icons and styles
             const keyConfig = getInsightConfig(key, t)
             return (

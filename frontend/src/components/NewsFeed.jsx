@@ -1,8 +1,24 @@
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import ArticleCard from './ArticleCard'
 import { useTranslation } from '../utils/i18n'
 
 const API = '/api'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15
+    }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } }
+}
 
 export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onProfileSetupRequired }) {
   const { t } = useTranslation(profile?.preferred_language || 'English')
@@ -53,7 +69,6 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onP
     if (profile) fetchFeed() 
   }, [profile?.role])
 
-  // Animate through agent steps during loading
   useEffect(() => {
     if (!loading) return
     const interval = setInterval(() => {
@@ -72,7 +87,6 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onP
           </div>
         </div>
 
-        {/* ── Agentic Loading UI ─────────────────────────── */}
         <div className="feed-agent-loading">
           <div className="feed-agent-loading__spinner" />
           <div className="feed-agent-loading__step">
@@ -101,14 +115,16 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onP
           )}
         </div>
 
-        {[1, 2, 3, 4].map(i => (
-          <div key={i} className="skeleton-card">
-            <div className="skeleton skeleton--sm" />
-            <div className="skeleton skeleton--lg" />
-            <div className="skeleton skeleton--md" />
-            <div className="skeleton skeleton--block" />
-          </div>
-        ))}
+        <div className="news-grid">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="skeleton-card" style={{ border: '1px solid var(--border)', background: 'var(--bg-secondary)', padding: 16 }}>
+              <div className="skeleton skeleton--sm" />
+              <div className="skeleton skeleton--lg" />
+              <div className="skeleton skeleton--md" />
+              <div className="skeleton skeleton--block" />
+            </div>
+          ))}
+        </div>
       </>
     )
   }
@@ -121,11 +137,7 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onP
             <h1 className="feed-title">{t('feed_title')}</h1>
           </div>
         </div>
-        <div style={{
-          padding: 40,
-          textAlign: 'center',
-          color: 'var(--text-secondary)',
-        }}>
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>
           <div style={{ fontSize: 40, marginBottom: 16 }}>📰</div>
           <div style={{ marginBottom: 8 }}>Unable to load your feed</div>
           <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 20 }}>{error}</div>
@@ -135,10 +147,8 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onP
     )
   }
 
-  // Check if feed was agent-curated
   const isAgentCurated = articles.length > 0 && articles[0]?.agent_curated
 
-  // Compute interest distribution
   const interestCounts = {}
   articles.forEach(a => {
     if (a.matched_interest) {
@@ -164,7 +174,6 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onP
         </button>
       </div>
 
-      {/* ── Interest Coverage Banner ─────────────────────── */}
       {hasInterestData && (
         <div className="feed-agent-banner">
           <div className="feed-agent-banner__header">
@@ -190,11 +199,7 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onP
       )}
 
       {articles.length === 0 ? (
-        <div style={{
-          padding: 60,
-          textAlign: 'center',
-          color: 'var(--text-secondary)',
-        }}>
+        <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-secondary)' }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🗞️</div>
           <div>{t('feed_empty')}</div>
           <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 8 }}>
@@ -202,14 +207,22 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onP
           </div>
         </div>
       ) : (
-        articles.map((article, i) => (
-          <ArticleCard
-            key={i}
-            article={article}
-            onVideoGenerate={onVideoGenerate}
-            language={profile?.preferred_language || 'English'}
-          />
-        ))
+        <motion.div 
+          className="news-grid"
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+        >
+          {articles.map((article, i) => (
+            <motion.div key={i} variants={itemVariants}>
+              <ArticleCard
+                article={article}
+                onVideoGenerate={onVideoGenerate}
+                language={profile?.preferred_language || 'English'}
+              />
+            </motion.div>
+          ))}
+        </motion.div>
       )}
     </>
   )

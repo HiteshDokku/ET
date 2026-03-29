@@ -53,7 +53,7 @@ RULES:
 EVALUATE_PROMPT = """You are a personalized news intelligence agent evaluating article relevance.
 
 Given a user profile and a list of articles, evaluate each article:
-1. RELEVANCE: Does the article title/summary DIRECTLY impact the user's specific interests?
+1. RELEVANCE: Does the article title DIRECTLY impact the user's specific interests?
 2. COMPLEXITY: Filter based on experience level:
    - "beginner" → reject hyper-technical whitepapers, jargon-heavy analysis
    - "intermediate" → accept most content
@@ -300,7 +300,7 @@ Articles already collected: {len(self.kept_articles)}
     async def _evaluate_articles(self, articles: list[dict]) -> list[str]:
         """LLM evaluates each article for relevance + complexity fit."""
         article_list = "\n".join([
-            f"ID: {a['temp_id']} | Title: {a['title']} | Source: {a['source']} | Summary: {a.get('summary', '')[:150]}"
+            f"ID: {a['temp_id']} | Title: {a['title']}"
             for a in articles
         ])
 

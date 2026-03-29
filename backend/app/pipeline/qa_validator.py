@@ -139,6 +139,9 @@ Score each dimension 0.0 to 1.0. Be objective and critical."""
         except Exception as e:
             last_error = e
             logger.warning(f"QA validation attempt {attempt+1}/{MAX_ATTEMPTS} failed: {e}")
+            if "429" in str(e) or "rate_limit" in str(e).lower():
+                logger.warning("Rate limited. Moving forward without retrying...")
+                raise e
             if attempt < MAX_ATTEMPTS - 1:
                 time.sleep(2)
     else:

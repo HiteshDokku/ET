@@ -39,7 +39,7 @@ export default function DashboardPage() {
   const [videoJob, setVideoJob] = useState(null)
   const [showSetup, setShowSetup] = useState(false)
   const [setupMode, setSetupMode] = useState(null)
-  
+
   const { t } = useTranslation(profile?.preferred_language || 'English')
 
   const getAuthHeaders = useCallback(async () => {

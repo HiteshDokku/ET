@@ -29,6 +29,7 @@ class PipelineOrchestrator:
         job_id: str,
         topic: str,
         source_url: Optional[str] = None,
+        summary: Optional[str] = None,
         voice_id: Optional[str] = None,
         progress_callback: Optional[ProgressCallback] = None,
         language: str = "English",
@@ -36,6 +37,7 @@ class PipelineOrchestrator:
         self.job_id = job_id
         self.topic = topic
         self.source_url = source_url
+        self.summary = summary
         self.voice_id = voice_id
         self.language = language
         self.progress_callback = progress_callback or (lambda *_: None)
@@ -78,6 +80,9 @@ class PipelineOrchestrator:
                             retry_ctx = strategy["script_context"]
 
                     scraped_text = self.scraped_content.text if self.scraped_content else None
+                    if not scraped_text and self.summary:
+                        logger.info("Scraper yielded no content, falling back to article summary for script generation context.")
+                        scraped_text = self.summary
                     self.script = generate_script(
                         self.topic, self.source_url, scraped_text, retry_ctx,
                         language=self.language
