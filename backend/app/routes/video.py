@@ -17,9 +17,9 @@ router = APIRouter(prefix="/api/video", tags=["Video Studio"])
 VIDEO_CACHE_TTL = 86400  # 24 hours
 
 
-def _cache_key(topic: str, source_url: str = None) -> str:
+def _cache_key(topic: str, source_url: str = None, language: str = "English") -> str:
     """Generate a deterministic cache key for a video request."""
-    raw = f"{topic}|{source_url or ''}"
+    raw = f"{topic}|{source_url or ''}|{language}"
     return f"video:cache:{hashlib.md5(raw.encode()).hexdigest()}"
 
 
@@ -36,7 +36,7 @@ async def generate_video(request: JobRequest):
         raise HTTPException(400, "PEXELS_API_KEY not configured")
 
     # Check video cache
-    cache_key = _cache_key(request.topic, request.source_url)
+    cache_key = _cache_key(request.topic, request.source_url, request.language)
     cached = redis_client.get(cache_key)
     if cached:
         cached_data = json.loads(cached)
@@ -58,6 +58,7 @@ async def generate_video(request: JobRequest):
             "source_url": request.source_url,
             "voice_id": request.voice_id,
             "cache_key": cache_key,
+            "language": request.language,
         },
         queue="video",
     )

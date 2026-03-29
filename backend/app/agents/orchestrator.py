@@ -32,7 +32,7 @@ from app.config import settings
 FEED_GRACE_TTL = 300
 
 
-async def build_personalized_feed(user_id: int, redis_client) -> List[Dict]:
+async def build_personalized_feed(user_id: int, redis_client, language: str = "English") -> List[Dict]:
     """
     Build a real-time personalized feed for the Dashboard.
 
@@ -93,6 +93,7 @@ async def build_personalized_feed(user_id: int, redis_client) -> List[Dict]:
             agent_articles,
             profile,
             top_n=settings.MAX_ARTICLES_PER_FEED,
+            language=language
         )
     else:
         # Agent already ranked — just slice to limit
@@ -107,7 +108,7 @@ async def build_personalized_feed(user_id: int, redis_client) -> List[Dict]:
 
     # ── Step 5: AI Rewriter ───────────────────────────────────
     rewrite_tasks = [
-        rewrite_article_for_user(article, profile)
+        rewrite_article_for_user(article, profile, language=language)
         for article in ranked
     ]
     personalized = await asyncio.gather(*rewrite_tasks)

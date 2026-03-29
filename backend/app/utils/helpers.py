@@ -48,10 +48,27 @@ def sanitize_filename(name: str) -> str:
 
 def get_font_path(font_name: str) -> str:
     """Get the full path to a font file."""
+    # Check /app/fonts first (Montserrat + symlinked Noto)
     path = os.path.join(settings.font_dir, f"{font_name}.ttf")
     if os.path.exists(path):
         return path
-    # Fallback to system font
+    
+    # Check system Noto Sans paths (installed via fonts-noto-core)
+    noto_dirs = [
+        "/usr/share/fonts/truetype/noto",
+        "/usr/share/fonts/opentype/noto",
+        "/usr/share/fonts/truetype/noto-cjk",
+    ]
+    for noto_dir in noto_dirs:
+        noto_path = os.path.join(noto_dir, f"{font_name}.ttf")
+        if os.path.exists(noto_path):
+            return noto_path
+        # Try .otf variant
+        noto_path_otf = os.path.join(noto_dir, f"{font_name}.otf")
+        if os.path.exists(noto_path_otf):
+            return noto_path_otf
+    
+    # Fallback to system fonts
     for fallback in [
         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",

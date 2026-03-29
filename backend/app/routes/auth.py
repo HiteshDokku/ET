@@ -22,12 +22,14 @@ class ProfileUpdateRequest(BaseModel):
     interests: Optional[List[str]] = None
     level: Optional[str] = None
     role: Optional[str] = None
+    preferred_language: Optional[str] = None
 
 
 class ProfileSetupRequest(BaseModel):
     role: str = "student"
     interests: List[str] = []
     level: str = "beginner"
+    preferred_language: str = "English"
 
 
 def cache_user_profile(user: User):
@@ -40,6 +42,7 @@ def cache_user_profile(user: User):
         "interests": user.interests or [],
         "level": user.level,
         "engagement": user.engagement or {},
+        "preferred_language": user.preferred_language or "English",
     }
     redis_client.setex(f"user:{user.id}", 86400, json.dumps(profile))
     if user.clerk_id:
@@ -52,7 +55,7 @@ async def get_or_create_user(clerk_id: str, db: AsyncSession) -> User:
     user = result.scalar_one_or_none()
 
     if not user:
-        user = User(clerk_id=clerk_id, role="student", interests=[], level="beginner", engagement={})
+        user = User(clerk_id=clerk_id, role="student", interests=[], level="beginner", engagement={}, preferred_language="English")
         db.add(user)
         await db.flush()
         await db.commit()
@@ -76,6 +79,7 @@ async def get_profile(
         "interests": user.interests,
         "level": user.level,
         "engagement": user.engagement,
+        "preferred_language": user.preferred_language or "English",
         "needs_setup": not user.interests,
         "REQUIRED_ONBOARDING": not user.interests,
     }
@@ -92,6 +96,7 @@ async def setup_profile(
     user.role = body.role
     user.interests = body.interests
     user.level = body.level
+    user.preferred_language = body.preferred_language
     await db.commit()
     cache_user_profile(user)
     return {"message": "Profile configured", "user_id": user.id}
@@ -112,6 +117,8 @@ async def update_profile(
         user.level = body.level
     if body.role is not None:
         user.role = body.role
+    if body.preferred_language is not None:
+        user.preferred_language = body.preferred_language
 
     await db.commit()
     cache_user_profile(user)

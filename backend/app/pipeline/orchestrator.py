@@ -31,11 +31,13 @@ class PipelineOrchestrator:
         source_url: Optional[str] = None,
         voice_id: Optional[str] = None,
         progress_callback: Optional[ProgressCallback] = None,
+        language: str = "English",
     ):
         self.job_id = job_id
         self.topic = topic
         self.source_url = source_url
         self.voice_id = voice_id
+        self.language = language
         self.progress_callback = progress_callback or (lambda *_: None)
 
         self.script: Optional[Script] = None
@@ -77,7 +79,8 @@ class PipelineOrchestrator:
 
                     scraped_text = self.scraped_content.text if self.scraped_content else None
                     self.script = generate_script(
-                        self.topic, self.source_url, scraped_text, retry_ctx
+                        self.topic, self.source_url, scraped_text, retry_ctx,
+                        language=self.language
                     )
                     logger.info(f"Script generated: {self.script.total_word_count} words")
 
@@ -97,7 +100,7 @@ class PipelineOrchestrator:
                         visual_ctx = strategy["visual_context"]
 
                     self.visual_plan = generate_visual_plan(
-                        self.script, visual_ctx
+                        self.script, visual_ctx, language=self.language
                     )
                     logger.info(f"Visual plan: {self.visual_plan.total_scenes} scenes")
 
@@ -134,7 +137,8 @@ class PipelineOrchestrator:
                         "Generating narration with ElevenLabs...", iteration
                     )
                     self.voice_result = generate_voice(
-                        self.script, self.job_id, self.voice_id
+                        self.script, self.job_id, self.voice_id,
+                        language=self.language
                     )
                     logger.info(f"Voice: {self.voice_result.total_duration:.1f}s")
 
@@ -146,6 +150,7 @@ class PipelineOrchestrator:
                 video_path = compose_video(
                     self.script, self.visual_plan, self.voice_result,
                     self.scene_images, self.chart_images, self.job_id,
+                    language=self.language,
                 )
                 logger.info(f"Video composed: {video_path}")
 

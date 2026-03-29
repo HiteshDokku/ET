@@ -369,8 +369,10 @@ Summary: {article.get('summary', '')}
 
         user_prompt = f"Below are {len(self.kept_articles[:8])} curated articles matching this user's interests.\n\n{articles_text}"
 
+        lang = self.profile.get("preferred_language", "English")
+
         try:
-            parsed = await ask_llm(system_prompt, user_prompt)
+            parsed = await ask_llm(system_prompt, user_prompt, language=lang)
             return {
                 "briefing": parsed.get("briefing", {}),
                 "followups": parsed.get("followups", []),

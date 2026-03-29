@@ -121,6 +121,7 @@ async def llm_rank_articles(
     articles: List[Dict],
     profile:  Dict,
     top_n:    int = 15,
+    language: str = "English",
 ) -> List[Dict]:
     """
     LLM Heuristic Ranker — replaces TF-IDF/Cosine Similarity.
@@ -180,7 +181,8 @@ Use the article ID (first 8 chars shown in brackets) as the 'id' field."""
 
     # ── Call the LLM ─────────────────────────────────────────
     try:
-        result = await ask_llm_fast(LLM_RANKER_SYSTEM, user_prompt)
+        lang = profile.get("preferred_language", "English")
+        result = await ask_llm_fast(LLM_RANKER_SYSTEM, user_prompt, language=lang)
         ranked_list = result.get("ranked_articles", [])
     except Exception as e:
         logger.error(f"❌ LLM ranking failed: {e} — falling back to position-based")

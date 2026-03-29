@@ -33,29 +33,50 @@ def _clean_json(text: str) -> str:
 
 
 async def _call(model: str, system_prompt: str, user_prompt: str, temperature: float = 0.4, max_tokens: int = 1500) -> dict | list:
-    """Internal: send a chat completion and return parsed JSON."""
+    """Internal: send a chat completion and return parsed JSON. Retries on rate limit."""
+    import asyncio
+    import logging
+    logger = logging.getLogger(__name__)
     client = _get_client()
-    response = await client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        response_format={"type": "json_object"},
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )
-    content = response.choices[0].message.content
-    return json.loads(_clean_json(content))
+
+    last_error = None
+    for attempt in range(3):
+        try:
+            response = await client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                response_format={"type": "json_object"},
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            content = response.choices[0].message.content
+            return json.loads(_clean_json(content))
+        except Exception as e:
+            last_error = e
+            error_str = str(e)
+            if "429" in error_str or "rate_limit" in error_str.lower():
+                wait = (attempt + 1) * 15  # 15s, 30s, 45s
+                logger.warning(f"Rate limited (attempt {attempt+1}/3), waiting {wait}s...")
+                await asyncio.sleep(wait)
+            else:
+                raise
+    raise last_error
 
 
-async def ask_llm(system_prompt: str, user_prompt: str) -> dict | list:
+async def ask_llm(system_prompt: str, user_prompt: str, language: str = "English") -> dict | list:
     """Deep reasoning model (gpt-oss-120b) — for extraction, analysis, briefings, Q&A."""
+    if language.lower() != "english":
+        system_prompt += f"\n\nCRITICAL INSTRUCTION: Produce all final output (titles, summaries, briefings, and analysis) in {language}."
     return await _call(MODEL_DEEP, system_prompt, user_prompt, temperature=0.3)
 
 
-async def ask_llm_fast(system_prompt: str, user_prompt: str) -> dict | list:
+async def ask_llm_fast(system_prompt: str, user_prompt: str, language: str = "English") -> dict | list:
     """Fast worker model (llama-3.3-70b) — for query generation, validation, gap checks."""
+    if language.lower() != "english":
+        system_prompt += f"\n\nCRITICAL INSTRUCTION: Produce all final output (titles, summaries, briefings, and analysis) in {language}. Keep JSON keys strictly in English."
     return await _call(MODEL_FAST, system_prompt, user_prompt, temperature=0.5)
 
 

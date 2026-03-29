@@ -30,10 +30,16 @@ RULES:
 10. Use active voice and present tense where possible"""
 
 
-def generate_script(topic: str, source_url: str = None, scraped_text: str = None, retry_context: str = None) -> Script:
+def generate_script(topic: str, source_url: str = None, scraped_text: str = None,
+                    retry_context: str = None, language: str = "English") -> Script:
     """Generate a news video script using Gemini 2.5 Flash."""
 
     client = Groq(api_key=settings.groq_api_key)
+
+    # Language-aware system prompt
+    system_prompt = SCRIPT_SYSTEM_PROMPT
+    if language.lower() != "english":
+        system_prompt += f"\n\nCRITICAL: Write the ENTIRE script (title, all segment text, key_facts) in {language}. The JSON keys must remain in English, but ALL text values must be in {language}."
 
     context_prompt = ""
     if scraped_text:
@@ -93,7 +99,7 @@ IMPORTANT:
             response = client.chat.completions.create(
                 model="openai/gpt-oss-120b",
                 messages=[
-                    {"role": "system", "content": SCRIPT_SYSTEM_PROMPT},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.7,

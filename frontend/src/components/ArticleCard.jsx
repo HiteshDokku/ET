@@ -1,3 +1,5 @@
+import { useTranslation } from '../utils/i18n'
+
 const CATEGORY_BADGE_CLASS = {
   markets: 'badge--markets',
   technology: 'badge--tech',
@@ -9,7 +11,9 @@ const CATEGORY_BADGE_CLASS = {
   healthcare: 'badge--healthcare',
 }
 
-export default function ArticleCard({ article, onVideoGenerate }) {
+export default function ArticleCard({ article, onVideoGenerate, language = 'English' }) {
+  const { t } = useTranslation(language)
+
   const {
     title,
     url,
@@ -65,7 +69,7 @@ export default function ArticleCard({ article, onVideoGenerate }) {
       {/* ── Agent Query Context ── */}
       {query_used && agent_curated && (
         <div className="article-card__agent-context">
-          <span className="agent-context-label">🔍 Found via:</span>
+          <span className="agent-context-label">{t('card_found_via')}</span>
           <span className="agent-context-query">{query_used}</span>
         </div>
       )}
@@ -85,7 +89,7 @@ export default function ArticleCard({ article, onVideoGenerate }) {
             if (!value || key === 'headline' || key === 'error' || key === 'raw_output') return null
             
             // Map keys to icons and styles
-            const keyConfig = getInsightConfig(key)
+            const keyConfig = getInsightConfig(key, t)
             return (
               <div key={key} className={`insight ${keyConfig.className}`}>
                 <span className="insight__icon">{keyConfig.icon}</span>
@@ -104,25 +108,25 @@ export default function ArticleCard({ article, onVideoGenerate }) {
           {ai_generated && (
             <div className="ai-indicator">
               <div className="ai-dot" />
-              AI Personalized
+              {t('card_ai_personalized')}
             </div>
           )}
           {agent_curated && (
             <div className="ai-indicator agent-indicator">
               <div className="ai-dot agent-dot" />
-              Agent Curated
+              {t('card_agent_curated')}
             </div>
           )}
         </div>
         {url && (
           <a href={url} target="_blank" rel="noopener noreferrer" className="read-more">
-            Read full article →
+            {t('card_read_more')}
           </a>
         )}
       </div>
 
       <button className="video-trigger" onClick={handleVideoClick}>
-        🎬 Create Video Summary
+        {t('card_create_video')}
       </button>
     </div>
   )
@@ -133,28 +137,28 @@ export default function ArticleCard({ article, onVideoGenerate }) {
  * Maps personalized insight keys to display config.
  * Handles all role variants (student, investor, founder).
  */
-function getInsightConfig(key) {
+function getInsightConfig(key, t) {
   const configs = {
     // Common
-    summary: { icon: '📋', label: 'AI Summary', className: 'insight--summary' },
-    why_this_article: { icon: '🎯', label: 'Why This Article', className: 'insight--highlight' },
+    summary: { icon: '📋', label: t('insight_summary'), className: 'insight--summary' },
+    why_this_article: { icon: '🎯', label: t('insight_why_this'), className: 'insight--highlight' },
 
     // Student
-    simple_explanation: { icon: '📖', label: 'Simple Explanation', className: 'insight--summary' },
-    why_it_matters: { icon: '💡', label: 'Why It Matters', className: 'insight--highlight' },
-    key_takeaway: { icon: '🎯', label: 'Key Takeaway', className: 'insight--action' },
-    key_insight: { icon: '💡', label: 'Key Insight', className: 'insight--highlight' },
+    simple_explanation: { icon: '📖', label: t('insight_simple'), className: 'insight--summary' },
+    why_it_matters: { icon: '💡', label: t('insight_why_matters'), className: 'insight--highlight' },
+    key_takeaway: { icon: '🎯', label: t('insight_takeaway'), className: 'insight--action' },
+    key_insight: { icon: '💡', label: t('insight_key'), className: 'insight--highlight' },
 
     // Investor
-    market_impact: { icon: '📊', label: 'Market Impact', className: 'insight--market' },
-    stocks_to_watch: { icon: '📈', label: 'Stocks to Watch', className: 'insight--action' },
-    investor_action: { icon: '🎯', label: 'Investor Action', className: 'insight--action' },
+    market_impact: { icon: '📊', label: t('insight_market'), className: 'insight--market' },
+    stocks_to_watch: { icon: '📈', label: t('insight_stocks'), className: 'insight--action' },
+    investor_action: { icon: '🎯', label: t('insight_investor'), className: 'insight--action' },
 
     // Founder
-    startup_relevance: { icon: '🚀', label: 'Startup Relevance', className: 'insight--highlight' },
-    opportunity_or_threat: { icon: '⚡', label: 'Opportunity / Threat', className: 'insight--market' },
-    action_for_founders: { icon: '🎯', label: 'Action for Founders', className: 'insight--action' },
-    action_item: { icon: '🎯', label: 'For You', className: 'insight--action' },
+    startup_relevance: { icon: '🚀', label: t('insight_startup'), className: 'insight--highlight' },
+    opportunity_or_threat: { icon: '⚡', label: t('insight_opportunity'), className: 'insight--market' },
+    action_for_founders: { icon: '🎯', label: t('insight_founder'), className: 'insight--action' },
+    action_item: { icon: '🎯', label: t('insight_for_you'), className: 'insight--action' },
   }
 
   return configs[key] || {

@@ -5,10 +5,12 @@ ENV PYTHONUNBUFFERED=1
 ENV IMAGEMAGICK_BINARY=/usr/bin/convert
 
 # System dependencies (ffmpeg for video, imagemagick for text rendering, chromium for scraping)
+# fonts-noto-core provides Noto Sans for Devanagari, Telugu, Kannada (Indic scripts)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     imagemagick \
     fonts-liberation \
+    fonts-noto-core \
     wget \
     chromium \
     chromium-driver \
@@ -25,7 +27,22 @@ RUN mkdir -p /app/fonts && \
     wget -q -O /app/fonts/Montserrat-ExtraBold.ttf \
     "https://github.com/JulietaUla/Montserrat/raw/master/fonts/ttf/Montserrat-ExtraBold.ttf" && \
     wget -q -O /app/fonts/Montserrat-SemiBold.ttf \
-    "https://github.com/JulietaUla/Montserrat/raw/master/fonts/ttf/Montserrat-SemiBold.ttf"
+    "https://github.com/JulietaUla/Montserrat/raw/master/fonts/ttf/Montserrat-SemiBold.ttf" && \
+    wget -q -O /app/fonts/Montserrat-Medium.ttf \
+    "https://github.com/JulietaUla/Montserrat/raw/master/fonts/ttf/Montserrat-Medium.ttf" && \
+    wget -q -O /app/fonts/Montserrat-Regular.ttf \
+    "https://github.com/JulietaUla/Montserrat/raw/master/fonts/ttf/Montserrat-Regular.ttf"
+
+# Symlink system Noto Sans Indic fonts into /app/fonts for easy access
+RUN ln -sf /usr/share/fonts/truetype/noto/NotoSansDevanagari-Bold.ttf /app/fonts/NotoSansDevanagari-Bold.ttf || true && \
+    ln -sf /usr/share/fonts/truetype/noto/NotoSansTelugu-Bold.ttf /app/fonts/NotoSansTelugu-Bold.ttf || true && \
+    ln -sf /usr/share/fonts/truetype/noto/NotoSansKannada-Bold.ttf /app/fonts/NotoSansKannada-Bold.ttf || true && \
+    ln -sf /usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf /app/fonts/NotoSansDevanagari-Regular.ttf || true && \
+    ln -sf /usr/share/fonts/truetype/noto/NotoSansTelugu-Regular.ttf /app/fonts/NotoSansTelugu-Regular.ttf || true && \
+    ln -sf /usr/share/fonts/truetype/noto/NotoSansKannada-Regular.ttf /app/fonts/NotoSansKannada-Regular.ttf || true
+
+# Rebuild matplotlib font cache so it picks up Noto Sans
+RUN python -c "import matplotlib.font_manager; matplotlib.font_manager._load_fontmanager(try_read_cache=False)" || true
 
 # Set Chrome env for Selenium
 ENV CHROME_BIN=/usr/bin/chromium

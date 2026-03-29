@@ -25,10 +25,15 @@ RULES:
 9. Headline should be punchy (1-5 words). Bullet points should be concise (5-10 words max)"""
 
 
-def generate_visual_plan(script: Script, retry_context: str = None) -> VisualPlan:
+def generate_visual_plan(script: Script, retry_context: str = None, language: str = "English") -> VisualPlan:
     """Generate a visual plan from the script using Gemini."""
 
     client = Groq(api_key=settings.groq_api_key)
+
+    # Language-aware system prompt
+    system_prompt = VISUAL_SYSTEM_PROMPT
+    if language.lower() != "english":
+        system_prompt += f"\n\nCRITICAL: Write ALL headline and bullet_points text in {language}. Keep JSON keys and search_query in English, but ALL user-visible text (headline, bullet_points) MUST be in {language}."
 
     segments_text = "\n".join([
         f"Segment {s.segment_id}: \"{s.text}\" (duration: {s.duration_estimate}s, "
@@ -104,7 +109,7 @@ REQUIREMENTS:
             response = client.chat.completions.create(
                 model="openai/gpt-oss-120b",
                 messages=[
-                    {"role": "system", "content": VISUAL_SYSTEM_PROMPT},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.7,

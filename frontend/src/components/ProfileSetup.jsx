@@ -15,6 +15,14 @@ const INTEREST_SUGGESTIONS = [
   'Government Policy', 'Climate & ESG', 'Healthcare',
 ]
 
+const LANGUAGES = [
+  { id: 'English', label: 'English' },
+  { id: 'Hindi', label: 'हिंदी' },
+  { id: 'Marathi', label: 'मराठी' },
+  { id: 'Telugu', label: 'తెలుగు' },
+  { id: 'Kannada', label: 'ಕನ್ನಡ' },
+]
+
 export default function ProfileSetup({ initialProfile, initialMode, onComplete, onCancel, getAuthHeaders, onVoiceComplete }) {
   const isUpdate = (initialProfile?.interests && initialProfile.interests.length > 0)
   const [mode, setMode] = useState(initialMode || (isUpdate ? 'manual' : 'landing'))
@@ -23,6 +31,7 @@ export default function ProfileSetup({ initialProfile, initialMode, onComplete, 
   const [role, setRole] = useState(initialProfile?.role || 'student')
   const [interests, setInterests] = useState(initialProfile?.interests || [])
   const [level, setLevel] = useState(initialProfile?.level || 'beginner')
+  const [preferredLanguage, setPreferredLanguage] = useState(initialProfile?.preferred_language || 'English')
   const [saving, setSaving] = useState(false)
 
   // Voice AI Interview state
@@ -63,7 +72,7 @@ export default function ProfileSetup({ initialProfile, initialMode, onComplete, 
   const handleSave = async () => {
     if (interests.length === 0) return
     setSaving(true)
-    await onComplete({ role, interests, level })
+    await onComplete({ role, interests, level, preferred_language: preferredLanguage })
     setSaving(false)
   }
 
@@ -286,6 +295,23 @@ export default function ProfileSetup({ initialProfile, initialMode, onComplete, 
 
         {mode === 'manual' && (
           <>
+            {/* Language Selection */}
+            <div className="form-group" style={{ marginTop: 16 }}>
+              <label className="form-label">Preferred Language</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 8 }}>
+                {LANGUAGES.map(lang => (
+                  <button
+                    key={lang.id}
+                    className={`role-card ${preferredLanguage === lang.id ? 'selected' : ''}`}
+                    onClick={() => setPreferredLanguage(lang.id)}
+                    style={{ padding: '8px', minHeight: 'auto', flexDirection: 'row', justifyContent: 'center' }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{lang.label}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Role Selection */}
             <div className="form-group" style={{ marginTop: 16 }}>
               <label className="form-label">I am a</label>

@@ -18,6 +18,15 @@ logger = logging.getLogger(__name__)
 # Cache for discovered voice ID
 _cached_voice_id: str | None = None
 
+# Language → edge-tts voice mapping
+EDGE_TTS_VOICES = {
+    "english": "en-US-ChristopherNeural",
+    "hindi": "hi-IN-MadhurNeural",
+    "marathi": "mr-IN-ManoharNeural",
+    "telugu": "te-IN-MohanNeural",
+    "kannada": "kn-IN-PrabhatNeural",
+}
+
 
 def _get_available_voice_id(client: ElevenLabs) -> str:
     """Get a voice ID that works with the user's plan.
@@ -66,7 +75,7 @@ def _get_available_voice_id(client: ElevenLabs) -> str:
 
 
 def generate_voice(script: Script, job_id: str,
-                   voice_id: str = None) -> VoiceResult:
+                   voice_id: str = None, language: str = "English") -> VoiceResult:
     """Generate TTS audio for each script segment using ElevenLabs."""
     work_dir = job_dir(job_id)
     audio_dir = os.path.join(work_dir, "audio")
@@ -104,9 +113,10 @@ def generate_voice(script: Script, job_id: str,
             try:
                 import subprocess
                 clean_text = seg.text.replace("*", "").replace('"', '').replace('\n', ' ')
+                edge_voice = EDGE_TTS_VOICES.get(language.lower(), "en-US-ChristopherNeural")
                 cmd = [
                     "edge-tts",
-                    "--voice", "en-US-ChristopherNeural",
+                    "--voice", edge_voice,
                     "--text", clean_text,
                     "--write-media", seg_path
                 ]
@@ -199,7 +209,7 @@ def _validate_voice(result: VoiceResult):
     )
 
 
-def generate_quick_audio(text: str, voice_id: str = None) -> bytes:
+def generate_quick_audio(text: str, voice_id: str = None, language: str = "English") -> bytes:
     """Generate TTS audio quickly without saving to disk."""
     client = ElevenLabs(api_key=settings.elevenlabs_api_key)
     vid = voice_id or _get_available_voice_id(client)
@@ -222,9 +232,10 @@ def generate_quick_audio(text: str, voice_id: str = None) -> bytes:
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
             tmp_path = tmp.name
         
+        edge_voice = EDGE_TTS_VOICES.get(language.lower(), "en-US-ChristopherNeural")
         cmd = [
             "edge-tts",
-            "--voice", "en-US-ChristopherNeural",
+            "--voice", edge_voice,
             "--text", clean_text,
             "--write-media", tmp_path
         ]

@@ -22,7 +22,7 @@ Return ONLY valid JSON with the following exact structure:
 Synthesize across all articles."""
 
 
-async def generate_briefing(articles: list[dict]):
+async def generate_briefing(articles: list[dict], language: str = "English"):
     articles_text = ""
     for i, article in enumerate(articles):
         articles_text += f"""
@@ -34,7 +34,7 @@ Content: {article.get('content', '')}
     user_prompt = f"Below are multiple articles about the SAME topic.\n\n{articles_text}"
 
     try:
-        parsed = await ask_llm(SYSTEM_PROMPT, user_prompt)
+        parsed = await ask_llm(SYSTEM_PROMPT, user_prompt, language=language)
         return {
             "briefing": parsed.get("briefing", {}),
             "followups": parsed.get("followups", []),

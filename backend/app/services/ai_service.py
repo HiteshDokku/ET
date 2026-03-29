@@ -37,6 +37,7 @@ def build_prompt(article, profile):
     interests = ", ".join(profile.get("interests", []))
     if not interests:
         interests = "general business trends"
+    language = profile.get("preferred_language", "English")
 
     return f"""
 You are an AI-powered personalized news assistant.
@@ -45,6 +46,7 @@ User Profile:
 - Role: {role}
 - Experience Level: {level}
 - Interests: {interests}
+- Preferred Language: {language}
 
 News Article:
 Title: {article.get("title")}
@@ -57,6 +59,7 @@ CRITICAL INSTRUCTIONS:
 4. NEVER use generic phrases: "this is useful", "this is important", "this helps understand", "this is significant"
 5. ALWAYS ground explanations in how it directly affects their {interests}
 6. Generate responses that are specific to {interests}, not vague or broadly applicable
+7. CRITICAL: PRODUCE ALL OUTPUT IN {language.upper()}! Ensure all JSON values (headline, explanations, etc) are in {language}, but keep the JSON keys exactly as requested in English.
 
 OUTPUT STRICTLY IN JSON:
 
@@ -93,11 +96,13 @@ For FOUNDER:
 # 🚀 MAIN FUNCTION
 # ─────────────────────────────────────────────
 
-async def rewrite_article_for_user(article: dict, profile: dict) -> dict:
+async def rewrite_article_for_user(article: dict, profile: dict, language: str = "English") -> dict:
     role = profile.get("role", "student")
+    # Inject language into profile so build_prompt picks it up
+    profile = {**profile, "preferred_language": language}
 
     # 🔥 Redis Cache (huge performance boost)
-    cache_key = f"ai:{role}:{article.get('title')[:50]}"
+    cache_key = f"ai:{role}:{language}:{article.get('title')[:50]}"
 
     if redis_client:
         cached = redis_client.get(cache_key)

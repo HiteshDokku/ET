@@ -1,7 +1,9 @@
-import { UserButton } from '@clerk/clerk-react'
 import { Link } from 'react-router-dom'
+import { UserButton } from '@clerk/clerk-react'
+import { useTranslation } from '../utils/i18n'
 
 export default function Navbar({ user, profile, sidebarOpen, onToggleSidebar, clerkAvailable, onEditProfile, onEditProfileVoice }) {
+  const { t } = useTranslation(profile?.preferred_language || 'English')
   const role = profile?.role || 'reader'
   const displayName = user?.firstName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'User'
 
@@ -12,8 +14,8 @@ export default function Navbar({ user, profile, sidebarOpen, onToggleSidebar, cl
       <div className="nav-brand">
         <div className="nav-logo">ET</div>
         <div>
-          <div className="nav-title">ET Intelligence</div>
-          <div className="nav-subtitle">AI-Native News Platform</div>
+          <div className="nav-title">{t('nav_title')}</div>
+          <div className="nav-subtitle">{t('nav_subtitle')}</div>
         </div>
       </div>
 
@@ -40,19 +42,19 @@ export default function Navbar({ user, profile, sidebarOpen, onToggleSidebar, cl
       <div className="nav-actions">
         {onEditProfileVoice && (
           <button className="btn-sidebar-toggle" onClick={onEditProfileVoice} style={{ marginRight: 8, whiteSpace: 'nowrap', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white' }}>
-            🎙️ Refine with AI
+            {t('nav_refine')}
           </button>
         )}
         {onEditProfile && (
           <button className="btn-sidebar-toggle" onClick={onEditProfile} style={{ marginRight: 8, whiteSpace: 'nowrap' }}>
-            ⚙️ Preferences
+            {t('nav_preferences')}
           </button>
         )}
         <Link to="/dashboard" className="btn-sidebar-toggle" style={{ textDecoration: 'none', marginRight: 8, whiteSpace: 'nowrap' }}>
-          🏠 Dashboard
+          {t('nav_dashboard')}
         </Link>
         <Link to="/hub" className="btn-sidebar-toggle active" style={{ textDecoration: 'none', marginRight: 8, whiteSpace: 'nowrap' }}>
-          ⚡ AI Hub
+          {t('nav_ai_hub')}
         </Link>
         {onToggleSidebar && (
           <button
@@ -61,7 +63,7 @@ export default function Navbar({ user, profile, sidebarOpen, onToggleSidebar, cl
             id="btn-toggle-ai-sidebar"
             style={{ whiteSpace: 'nowrap' }}
           >
-            {sidebarOpen ? '✕' : '📖'} History
+            {sidebarOpen ? t('nav_history_close') : t('nav_history')}
           </button>
         )}
       </div>

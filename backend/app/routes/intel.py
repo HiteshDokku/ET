@@ -20,11 +20,13 @@ router = APIRouter(prefix="/api/intel", tags=["Intelligence Hub"])
 
 class TopicRequest(BaseModel):
     topic: str
+    language: str = "English"
 
 
 class AskRequest(BaseModel):
     question: str
     context: str = ""
+    language: str = "English"
 
 
 @router.post("/generate")
@@ -52,7 +54,7 @@ async def generate_briefing_endpoint(req: TopicRequest):
             }
 
         articles_as_dicts = [a.model_dump() for a in curated_articles]
-        result = await generate_briefing(articles_as_dicts)
+        result = await generate_briefing(articles_as_dicts, language=req.language)
 
         return {
             "briefing": result.get("briefing", {}),
@@ -111,7 +113,7 @@ User question:
 {req.question}"""
 
     try:
-        result = await ask_llm(system_prompt, user_prompt)
+        result = await ask_llm(system_prompt, user_prompt, language=req.language)
         answer = result.get("answer", str(result))
         return {"answer": answer}
     except Exception as e:
@@ -140,12 +142,12 @@ User question:
 
     try:
         # Get textual answer
-        result = await ask_llm(system_prompt, user_prompt)
+        result = await ask_llm(system_prompt, user_prompt, language=req.language)
         text_answer = result.get("answer", "I could not find an answer to that question.")
         
         # Generate voice
         voice_id = "pMsXgVXv3BLzUgSXRplE"  # Serena
-        audio_bytes = generate_quick_audio(text_answer, voice_id=voice_id)
+        audio_bytes = generate_quick_audio(text_answer, voice_id=voice_id, language=req.language)
         
         # Return as streaming response
         return Response(content=audio_bytes, media_type="audio/mpeg")

@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/clerk-react'
 import { useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import ProfileSetup from '../components/ProfileSetup'
+import { useTranslation } from '../utils/i18n'
 import './HubPage.css'
 
 const API = '/api'
@@ -40,6 +41,7 @@ export default function HubPage({ profile }) {
   const urlId = searchParams.get('id')
   
   const [input, setInput] = useState('')
+  const [messages, setMessages] = useState([])
   const [tool, setTool] = useState(null) 
   const [loading, setLoading] = useState(false)
   const [activeId, setActiveId] = useState(null)
@@ -50,6 +52,8 @@ export default function HubPage({ profile }) {
 
   // Resolve the user's profile from prop or localStorage
   const userProfile = profile || getSavedProfile()
+  const lang = userProfile?.preferred_language || 'English'
+  const { t } = useTranslation(lang)
 
   // Load conversation from URL ID
   useEffect(() => {
@@ -118,7 +122,7 @@ export default function HubPage({ profile }) {
       const res = await fetch(`${API}${endpoint}`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ topic: input.trim() }),
+        body: JSON.stringify({ topic: input.trim(), language: lang }),
       })
 
       if (!res.ok) throw new Error(`Server error ${res.status}`)
@@ -227,7 +231,8 @@ export default function HubPage({ profile }) {
         headers,
         body: JSON.stringify({ 
           question: questionText.trim(),
-          context: contextText
+          context: contextText,
+          language: lang
         }),
       })
 
@@ -273,7 +278,8 @@ export default function HubPage({ profile }) {
         headers,
         body: JSON.stringify({ 
           question: questionText.trim(),
-          context: contextText
+          context: contextText,
+          language: lang
         }),
       })
 
@@ -333,8 +339,8 @@ export default function HubPage({ profile }) {
 
   // ── Resolve tool title ────────────────────────────────────────
   const getToolTitle = () => {
-        if (tool === 'navigator') return '📰 News Navigator Briefing'
-    return '🧬 Story Arc Analysis'
+    if (tool === 'navigator') return t('hub_briefing_title')
+    return t('hub_storyarc_title')
   }
 
   return (
@@ -351,27 +357,27 @@ export default function HubPage({ profile }) {
             <div className="hub-header">
               <div className="hub-title">
                 <span className="hub-icon-et">⚡</span>
-                ET Intelligence Hub
+                {t('hub_title')}
               </div>
-              <p className="hub-tagline">AI-Powered News Analysis & Story Arc Tracking</p>
+              <p className="hub-tagline">{t('hub_tagline')}</p>
             </div>
 
             <div className="hub-divider-row">
               <div className="hub-divider-line" />
-              <span className="hub-divider-text">or explore a specific topic</span>
+              <span className="hub-divider-text">{t('hub_divider')}</span>
               <div className="hub-divider-line" />
             </div>
             
             <section className="hub-input-section">
               <div className="hub-input-card">
-                <label className="hub-input-label">What topic do you want to explore?</label>
+                <label className="hub-input-label">{t('hub_input_label')}</label>
                 <input
                   type="text"
                   className="hub-topic-input"
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => handleKeyDown(e, false)}
-                  placeholder="e.g. RBI rate cuts, Adani Hindenburg, EV market India..."
+                  placeholder={t('hub_input_placeholder')}
                   autoComplete="off"
                 />
                 <div className="hub-button-group">
@@ -381,7 +387,7 @@ export default function HubPage({ profile }) {
                     disabled={!input.trim()}
                   >
                     <span className="hub-btn-icon">📰</span>
-                    Generate News Briefing
+                    {t('hub_btn_briefing')}
                   </button>
                   <button 
                     className="btn-hub-tool" 
@@ -389,7 +395,7 @@ export default function HubPage({ profile }) {
                     disabled={!input.trim()}
                   >
                     <span className="hub-btn-icon">🧬</span>
-                    Generate Story Arc
+                    {t('hub_btn_storyarc')}
                   </button>
                 </div>
               </div>
@@ -399,7 +405,7 @@ export default function HubPage({ profile }) {
           <section className="hub-results-section">
             <div className="hub-section-header">
               <h2>{getToolTitle()}</h2>
-              <button className="btn-hub-reset" onClick={resetHub}>← New Topic</button>
+              <button className="btn-hub-reset" onClick={resetHub}>{t('hub_new_topic')}</button>
             </div>
 
             <div className="hub-chat-history">
@@ -422,17 +428,17 @@ export default function HubPage({ profile }) {
               <div className="hub-loading-card">
                 <div className="hub-spinner"></div>
                 <div className="hub-loading-title">
-                  'Agent is processing...'
+                  {t('hub_loading_title')}
                 </div>
                 <div className="hub-loading-sub">
-                  'Collecting intel, generating insights.'
+                  {t('hub_loading_sub')}
                 </div>
               </div>
             )}
             
             {!loading && (
               <div className="hub-qa-section">
-                <h3>💬 Ask a Follow-up Question</h3>
+                <h3>{t('hub_followup')}</h3>
                 <div className="hub-qa-row">
                   <input
                     type="text"
@@ -440,7 +446,7 @@ export default function HubPage({ profile }) {
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => handleKeyDown(e, true)}
-                    placeholder="Ask anything about the report..."
+                    placeholder={t('hub_followup_placeholder')}
                   />
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button 
@@ -448,7 +454,7 @@ export default function HubPage({ profile }) {
                       onClick={() => askFollowup(input)}
                       disabled={!input.trim()}
                     >
-                      Ask
+                      {t('hub_ask')}
                     </button>
                     <button 
                       className="btn-hub-ask" 
@@ -456,7 +462,7 @@ export default function HubPage({ profile }) {
                       onClick={() => askFollowupVoice(input)}
                       disabled={!input.trim()}
                     >
-                      🎙️ Ask (Voice)
+                      {t('hub_ask_voice')}
                     </button>
                   </div>
                 </div>

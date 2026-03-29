@@ -170,6 +170,7 @@ class JobRequest(BaseModel):
     topic: str = Field(..., min_length=5, max_length=500, description="News topic to generate video for")
     source_url: Optional[str] = Field(None, description="Optional source article URL")
     voice_id: Optional[str] = None
+    language: str = Field("English", description="Language for script and narration")
 
 
 class JobResponse(BaseModel):

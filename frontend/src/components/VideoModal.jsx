@@ -1,27 +1,29 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-
-const STAGE_LABELS = {
-  queued: 'Queued',
-  generating_script: 'Writing Script',
-  planning_visuals: 'Planning Visuals',
-  sourcing_images: 'Fetching Images',
-  generating_charts: 'Creating Charts',
-  generating_voice: 'Generating Narration',
-  composing_video: 'Composing Video',
-  running_qa: 'Quality Check',
-  reflecting: 'Improving Quality',
-  completed: 'Complete',
-  failed: 'Failed',
-}
+import { useTranslation } from '../utils/i18n'
 
 const STAGE_ORDER = [
   'queued', 'generating_script', 'planning_visuals', 'sourcing_images',
   'generating_charts', 'generating_voice', 'composing_video', 'running_qa',
 ]
 
-export default function VideoModal({ job, onClose }) {
+export default function VideoModal({ job, onClose, language = 'English' }) {
+  const { t } = useTranslation(language)
   const [status, setStatus] = useState(null)
   const intervalRef = useRef(null)
+
+  const STAGE_LABELS = {
+    queued: t('stage_queued'),
+    generating_script: t('stage_generating_script'),
+    planning_visuals: t('stage_planning_visuals'),
+    sourcing_images: t('stage_sourcing_images'),
+    generating_charts: t('stage_generating_charts'),
+    generating_voice: t('stage_generating_voice'),
+    composing_video: t('stage_composing_video'),
+    running_qa: t('stage_running_qa'),
+    reflecting: t('stage_reflecting'),
+    completed: t('stage_completed'),
+    failed: t('stage_failed'),
+  }
 
   const pollStatus = useCallback(async () => {
     try {
@@ -61,7 +63,7 @@ export default function VideoModal({ job, onClose }) {
       <div className="video-modal" onClick={e => e.stopPropagation()}>
         <div className="video-modal__header">
           <h2 className="video-modal__title">
-            {isComplete ? '🎬 Video Ready' : isFailed ? '⚠️ Generation Failed' : '⚡ Generating Video'}
+            {isComplete ? t('video_ready') : isFailed ? t('video_failed') : t('video_generating')}
           </h2>
           <button className="video-modal__close" onClick={onClose}>✕</button>
         </div>
@@ -83,14 +85,14 @@ export default function VideoModal({ job, onClose }) {
                   className="btn-primary"
                   style={{ textAlign: 'center', textDecoration: 'none' }}
                 >
-                  ↓ Download MP4
+                  {t('video_download')}
                 </a>
                 <button
                   className="btn-refresh"
                   style={{ flex: 1 }}
                   onClick={onClose}
                 >
-                  Close
+                  {t('video_close')}
                 </button>
               </div>
             </>
@@ -99,9 +101,9 @@ export default function VideoModal({ job, onClose }) {
           {isFailed && (
             <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
               <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
-              <div>{status?.error || 'Video generation failed'}</div>
+              <div>{status?.error || t('video_failed')}</div>
               <button className="btn-refresh" onClick={onClose} style={{ marginTop: 20 }}>
-                Close
+                {t('video_close')}
               </button>
             </div>
           )}
@@ -112,7 +114,7 @@ export default function VideoModal({ job, onClose }) {
                 <div className="progress-bar__fill" style={{ width: `${progress}%` }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                <span>{status?.message || 'Initializing...'}</span>
+                <span>{status?.message || t('video_init')}</span>
                 <span>{Math.round(progress)}%</span>
               </div>
 

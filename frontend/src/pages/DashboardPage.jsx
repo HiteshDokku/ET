@@ -5,6 +5,7 @@ import NewsFeed from '../components/NewsFeed'
 import AISidebar from '../components/AISidebar'
 import VideoModal from '../components/VideoModal'
 import ProfileSetup from '../components/ProfileSetup'
+import { useTranslation } from '../utils/i18n'
 
 const API = '/api'
 
@@ -38,6 +39,8 @@ export default function DashboardPage() {
   const [videoJob, setVideoJob] = useState(null)
   const [showSetup, setShowSetup] = useState(false)
   const [setupMode, setSetupMode] = useState(null)
+  
+  const { t } = useTranslation(profile?.preferred_language || 'English')
 
   const getAuthHeaders = useCallback(async () => {
     const headers = { 'Content-Type': 'application/json' }
@@ -101,10 +104,11 @@ export default function DashboardPage() {
   const handleVideoGenerate = async (topic, sourceUrl) => {
     try {
       const headers = await getAuthHeaders()
+      const lang = profile?.preferred_language || 'English'
       const res = await fetch(`${API}/video/generate`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ topic, source_url: sourceUrl }),
+        body: JSON.stringify({ topic, source_url: sourceUrl, language: lang }),
       })
       const data = await res.json()
       setVideoJob(data)
@@ -129,13 +133,13 @@ export default function DashboardPage() {
       <div className="dashboard">
         <div className="feed-loading" style={{ gap: 24 }}>
           <div style={{ fontFamily: 'var(--font-editorial)', fontSize: 32, fontWeight: 800 }}>
-            ET Intelligence Platform
+            {t('login_title')}
           </div>
           <div style={{ color: 'var(--text-secondary)', fontSize: 16 }}>
-            Sign in to access your personalized newsroom
+            {t('login_sub')}
           </div>
           <SignInButton mode="modal">
-            <button className="landing-cta">Sign In →</button>
+            <button className="landing-cta">{t('login_btn')}</button>
           </SignInButton>
         </div>
       </div>
@@ -157,6 +161,7 @@ export default function DashboardPage() {
       <div className="dashboard-body">
         <div className="dashboard-main">
           <NewsFeed
+            key={profile?.preferred_language || 'English'}
             profile={profile}
             getAuthHeaders={getAuthHeaders}
             onVideoGenerate={handleVideoGenerate}
@@ -175,6 +180,7 @@ export default function DashboardPage() {
         <VideoModal
           job={videoJob}
           onClose={() => setVideoJob(null)}
+          language={profile?.preferred_language || 'English'}
         />
       )}
 

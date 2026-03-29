@@ -28,6 +28,14 @@ MEDIA_W = 1040
 MEDIA_H = 700
 RENDER_FPS = 24
 
+# Language → Noto Sans font mapping for Indic scripts
+INDIC_FONT_MAP = {
+    "hindi": "NotoSansDevanagari-Bold",
+    "marathi": "NotoSansDevanagari-Bold",
+    "telugu": "NotoSansTelugu-Bold",
+    "kannada": "NotoSansKannada-Bold",
+}
+
 _ticker_cache = None
 
 def _get_live_ticker_data():
@@ -66,6 +74,7 @@ def compose_video(
     scene_images: dict[int, str],
     chart_images: dict[int, str],
     job_id: str,
+    language: str = "English",
 ) -> str:
     work_dir = job_dir(job_id)
     output_dir = job_output_dir(job_id)
@@ -105,7 +114,7 @@ def compose_video(
             seg_text = " ".join(seg_texts)
 
         ui_path = os.path.join(scenes_dir, f"ui_{scene.scene_id}.png")
-        _composite_ui_image(scene, seg_text, script.title, ui_path)
+        _composite_ui_image(scene, seg_text, script.title, ui_path, language)
         
         scene_files.append((img_path, ui_path, duration, scene.motion_type))
 
@@ -119,13 +128,17 @@ def compose_video(
     return output_path
 
 
-def _composite_ui_image(scene: SceneVisual, script_text: str, title: str, output_path: str):
+def _composite_ui_image(scene: SceneVisual, script_text: str, title: str, output_path: str, language: str = "English"):
     """Draw the ET graphical interface with a transparent hole for media."""
     ticker_data = _get_live_ticker_data()
     script_text = script_text.replace("*", "").replace("**", "")
 
     ui = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     draw = ImageDraw.Draw(ui)
+
+    # Determine which font to use for text content based on language
+    indic_font_name = INDIC_FONT_MAP.get(language.lower())
+    use_indic = indic_font_name is not None
 
     # Base Gradient Background (light gray map aesthetic)
     for y in range(HEIGHT):
@@ -154,12 +167,23 @@ def _composite_ui_image(scene: SceneVisual, script_text: str, title: str, output
     try:
         font_logo_et = ImageFont.truetype(get_font_path(FONT_BOLD), 40)
         font_logo_text = ImageFont.truetype(get_font_path(FONT_SEMIBOLD), 38)
-        font_box_header = ImageFont.truetype(get_font_path(FONT_EXTRABOLD), 48)
-        font_headline = ImageFont.truetype(get_font_path(FONT_EXTRABOLD), 52)
-        font_bullet = ImageFont.truetype(get_font_path("Montserrat-Medium"), 32)
-        font_script = ImageFont.truetype(get_font_path("Montserrat-Regular"), 26)
         font_ticker = ImageFont.truetype(get_font_path(FONT_SEMIBOLD), 32)
-    except Exception:
+
+        # For content text: use Indic font if needed, else Montserrat
+        if use_indic:
+            indic_path = get_font_path(indic_font_name)
+            font_box_header = ImageFont.truetype(get_font_path(FONT_EXTRABOLD), 48)
+            font_headline = ImageFont.truetype(indic_path, 44)
+            font_bullet = ImageFont.truetype(indic_path, 28)
+            font_script = ImageFont.truetype(indic_path, 24)
+            font_ticker_text = ImageFont.truetype(indic_path, 28)  # For ticker headline
+        else:
+            font_box_header = ImageFont.truetype(get_font_path(FONT_EXTRABOLD), 48)
+            font_headline = ImageFont.truetype(get_font_path(FONT_EXTRABOLD), 52)
+            font_bullet = ImageFont.truetype(get_font_path("Montserrat-Medium"), 32)
+            font_script = ImageFont.truetype(get_font_path("Montserrat-Regular"), 26)
+    except Exception as e:
+        logger.warning(f"Font loading failed ({e}), using defaults")
         font_logo_et = ImageFont.load_default()
         font_logo_text = ImageFont.load_default()
         font_box_header = ImageFont.load_default()

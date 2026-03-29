@@ -52,7 +52,8 @@ async def get_personalized_feed(
 
         # ── Try the agent pipeline ────────────────────────────
         try:
-            feed = await build_personalized_feed(user.id, redis_client)
+            lang = user.preferred_language or "English"
+            feed = await build_personalized_feed(user.id, redis_client, lang)
         except Exception as agent_err:
             logger.error(f"⚠️ Agent pipeline failed: {agent_err}")
             feed = []

@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react'
 import ArticleCard from './ArticleCard'
+import { useTranslation } from '../utils/i18n'
 
 const API = '/api'
 
-/* Agent pipeline steps shown during loading */
-const AGENT_STEPS = [
-  { icon: '🔍', text: 'Generating search queries from your interests...' },
-  { icon: '📡', text: 'Scraping Google News RSS feeds...' },
-  { icon: '🧠', text: 'Evaluating article relevance with AI...' },
-  { icon: '🔄', text: 'Analyzing coverage gaps across interests...' },
-  { icon: '✍️', text: 'Personalizing insights for your role...' },
-]
-
 export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onProfileSetupRequired }) {
+  const { t } = useTranslation(profile?.preferred_language || 'English')
+  
+  const AGENT_STEPS = [
+    { icon: '🔍', text: t('agent_step_1') },
+    { icon: '📡', text: t('agent_step_2') },
+    { icon: '🧠', text: t('agent_step_3') },
+    { icon: '🔄', text: t('agent_step_4') },
+    { icon: '✍️', text: t('agent_step_5') },
+  ]
+
   const [articles, setArticles] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -65,8 +67,8 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onP
       <>
         <div className="feed-header">
           <div>
-            <h1 className="feed-title">Your Briefing</h1>
-            <div className="feed-count">Agent is curating your newsroom...</div>
+            <h1 className="feed-title">{t('feed_title')}</h1>
+            <div className="feed-count">{t('feed_loading')}</div>
           </div>
         </div>
 
@@ -116,7 +118,7 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onP
       <>
         <div className="feed-header">
           <div>
-            <h1 className="feed-title">Your Briefing</h1>
+            <h1 className="feed-title">{t('feed_title')}</h1>
           </div>
         </div>
         <div style={{
@@ -150,15 +152,15 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onP
     <>
       <div className="feed-header">
         <div>
-          <h1 className="feed-title">Your Briefing</h1>
+          <h1 className="feed-title">{t('feed_title')}</h1>
           <div className="feed-count">
-            {articles.length} articles personalized for {profile?.role || 'you'}
-            {isAgentCurated && ' · Agent curated'}
+            {articles.length} {t('feed_articles_for')} {profile?.role || 'you'}
+            {isAgentCurated && ` · ${t('feed_agent_curated')}`}
             {elapsed && ` · ${elapsed}s`}
           </div>
         </div>
         <button className="btn-refresh" onClick={() => fetchFeed(true)}>
-          ↻ Refresh
+          {t('feed_refresh')}
         </button>
       </div>
 
@@ -168,12 +170,12 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onP
           <div className="feed-agent-banner__header">
             <span className="feed-agent-dot" />
             <span className="feed-agent-label">
-              {isAgentCurated ? 'Intelligence Agent' : 'Personalized Feed'}
+              {isAgentCurated ? t('feed_agent') : t('feed_personal')}
             </span>
             <span className="feed-agent-sublabel">
               {isAgentCurated
-                ? 'Real-time articles curated from your profile'
-                : 'Coverage across all your interests'}
+                ? t('feed_agent_sub')
+                : t('feed_personal_sub')}
             </span>
           </div>
           <div className="feed-agent-banner__interests">
@@ -194,7 +196,7 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onP
           color: 'var(--text-secondary)',
         }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🗞️</div>
-          <div>No articles yet — the agent couldn't find relevant news.</div>
+          <div>{t('feed_empty')}</div>
           <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 8 }}>
             Try refreshing or updating your interests in the profile.
           </div>
@@ -205,6 +207,7 @@ export default function NewsFeed({ profile, getAuthHeaders, onVideoGenerate, onP
             key={i}
             article={article}
             onVideoGenerate={onVideoGenerate}
+            language={profile?.preferred_language || 'English'}
           />
         ))
       )}

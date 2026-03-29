@@ -54,7 +54,8 @@ def get_job_status(job_id: str) -> dict | None:
 
 @celery_app.task(bind=True, name="app.tasks.video_tasks.generate_video")
 def generate_video_task(self, job_id: str, topic: str, source_url: str = None,
-                        voice_id: str = None, cache_key: str = None):
+                        voice_id: str = None, cache_key: str = None,
+                        language: str = "English"):
     """Main Celery task for video generation with caching."""
     logger.info(f"Starting video generation for job {job_id}: {topic}")
 
@@ -71,6 +72,7 @@ def generate_video_task(self, job_id: str, topic: str, source_url: str = None,
             source_url=source_url,
             voice_id=voice_id,
             progress_callback=progress_callback,
+            language=language,
         )
 
         result = orchestrator.run()
