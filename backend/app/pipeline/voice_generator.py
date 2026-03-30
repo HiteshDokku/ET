@@ -93,7 +93,7 @@ def _generate_edge_tts(text: str, output_path: str, language: str = "English"):
     cmd = [
         "edge-tts",
         "--voice", edge_voice,
-        "--rate", "-15%",
+        "--rate=-15%",
         "--text", clean_text,
         "--write-media", output_path
     ]
@@ -283,7 +283,7 @@ def generate_quick_audio(text: str, voice_id: str = None, language: str = "Engli
     cmd = [
         "edge-tts",
         "--voice", edge_voice,
-        "--rate", "-15%",
+        "--rate=-15%",
         "--text", clean_text,
         "--write-media", tmp_path
     ]

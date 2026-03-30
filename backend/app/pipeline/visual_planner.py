@@ -3,13 +3,16 @@
 import json
 import logging
 import time
-from groq import Groq
+from groq import Groq, RateLimitError
 
 from app.config import settings, MIN_SCENE_CHANGES, MOTION_TYPES
 from app.models import Script, VisualPlan, SceneVisual, MotionType
 from app.utils.helpers import parse_llm_json
 
 logger = logging.getLogger(__name__)
+
+PRIMARY_MODEL = "llama-3.3-70b-versatile"
+FALLBACK_MODEL = "llama-3.1-8b-instant"
 
 VISUAL_SYSTEM_PROMPT = """You are a professional video director planning visuals for a news broadcast video. You create scene-by-scene visual plans that are cinematic, engaging, and semantically matched to the narration.
 
@@ -103,12 +106,14 @@ REQUIREMENTS:
   * "pie": Use ONLY for percentages that add up to exactly 100%.
   * "line": Use for trends across time (e.g. 3+ temporal data points)."""
 
-    MAX_ATTEMPTS = 2
+    MAX_ATTEMPTS = 3
+    current_model = PRIMARY_MODEL
     last_error = None
     for attempt in range(MAX_ATTEMPTS):
         try:
+            logger.info(f"Visual plan attempt {attempt+1}/{MAX_ATTEMPTS} using model: {current_model}")
             response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model=current_model,
                 messages=[
                     {"role": "system", "content": str(system_prompt)},
                     {"role": "user", "content": str(user_prompt)}
@@ -145,12 +150,18 @@ REQUIREMENTS:
                 ))
             
             break
+        except RateLimitError as e:
+            last_error = e
+            logger.warning(
+                f"Visual plan attempt {attempt+1}/{MAX_ATTEMPTS} hit Groq rate limit (429). "
+                f"Downgrading model from {current_model} to {FALLBACK_MODEL}."
+            )
+            current_model = FALLBACK_MODEL
+            if attempt < MAX_ATTEMPTS - 1:
+                time.sleep(1)  # brief pause before retry with fallback model
         except Exception as e:
             last_error = e
             logger.warning(f"Visual plan attempt {attempt+1}/{MAX_ATTEMPTS} failed: {e}")
-            if "429" in str(e) or "rate_limit" in str(e).lower():
-                logger.warning("Rate limited. Moving forward without retrying...")
-                raise e
             if attempt < MAX_ATTEMPTS - 1:
                 time.sleep(2)
     else:

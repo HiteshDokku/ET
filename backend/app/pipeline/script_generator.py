@@ -3,7 +3,7 @@
 import json
 import logging
 import time
-from groq import Groq
+from groq import Groq, RateLimitError
 
 from app.config import (
     settings, VIDEO_MIN_DURATION, VIDEO_MAX_DURATION,
@@ -14,6 +14,9 @@ from app.models import Script, ScriptSegment
 from app.utils.helpers import count_words, estimate_duration, parse_llm_json
 
 logger = logging.getLogger(__name__)
+
+PRIMARY_MODEL = "llama-3.3-70b-versatile"
+FALLBACK_MODEL = "llama-3.1-8b-instant"
 
 SCRIPT_SYSTEM_PROMPT = """You are a professional news video scriptwriter. You write scripts for short-form vertical (9:16) news videos. Your scripts are engaging, factual, and designed for maximum viewer retention.
 
@@ -93,12 +96,14 @@ IMPORTANT:
 - Extract ALL numbers and statistics into numeric_data array
 - Each segment text should be 2-3 sentences, each sentence <= 15 words"""
 
-    MAX_ATTEMPTS = 2
+    MAX_ATTEMPTS = 3
+    current_model = PRIMARY_MODEL
     last_error = None
     for attempt in range(MAX_ATTEMPTS):
         try:
+            logger.info(f"Script generation attempt {attempt+1}/{MAX_ATTEMPTS} using model: {current_model}")
             response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model=current_model,
                 messages=[
                     {"role": "system", "content": str(system_prompt)},
                     {"role": "user", "content": str(user_prompt)}
@@ -113,12 +118,18 @@ IMPORTANT:
 
             data = parse_llm_json(raw)
             break
+        except RateLimitError as e:
+            last_error = e
+            logger.warning(
+                f"Script generation attempt {attempt+1}/{MAX_ATTEMPTS} hit Groq rate limit (429). "
+                f"Downgrading model from {current_model} to {FALLBACK_MODEL}."
+            )
+            current_model = FALLBACK_MODEL
+            if attempt < MAX_ATTEMPTS - 1:
+                time.sleep(1)  # brief pause before retry with fallback model
         except Exception as e:
             last_error = e
             logger.warning(f"Script generation attempt {attempt+1}/{MAX_ATTEMPTS} failed: {e}")
-            if "429" in str(e) or "rate_limit" in str(e).lower():
-                logger.warning("Rate limited. Moving forward without retrying...")
-                raise e
             if attempt < MAX_ATTEMPTS - 1:
                 time.sleep(2)
     else:
